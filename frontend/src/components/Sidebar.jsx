@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
@@ -9,7 +10,9 @@ import {
   BookOpen, 
   BarChart3, 
   Users, 
-  FileText 
+  FileText,
+  Activity,
+  Sparkles
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -20,28 +23,42 @@ export default function Sidebar() {
   const isAdmin = roles.includes('ROLE_ADMIN');
 
   const navClass = ({ isActive }) =>
-    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+    `group flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-sm font-semibold transition-all relative ${
       isActive
-        ? 'bg-brand-50 text-brand-700 font-semibold shadow-sm'
-        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+        ? 'bg-gradient-to-r from-brand-50 to-indigo-50/50 text-brand-700 shadow-sm border border-brand-200/60'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent'
     }`;
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 min-h-[calc(100vh-4rem)] p-4 flex flex-col justify-between hidden md:flex">
+    <aside className="w-64 bg-white/70 backdrop-blur-md border-r border-slate-200/80 min-h-[calc(100vh-4rem)] p-4 flex flex-col justify-between hidden md:flex">
       <div className="space-y-6">
         {/* Employee Navigation */}
         {isEmployee && (
           <div>
-            <p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Self Service</p>
+            <p className="px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+              Self Service
+            </p>
             <nav className="space-y-1">
               <NavLink to="/employee" end className={navClass}>
-                <LayoutDashboard className="w-4 h-4" /> Dashboard
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className="w-4 h-4 text-slate-500 group-hover:text-brand-600 transition-colors" />
+                  <span>Dashboard</span>
+                </div>
               </NavLink>
               <NavLink to="/employee/chat" className={navClass}>
-                <Bot className="w-4 h-4 text-brand-600" /> AI Troubleshooter
+                <div className="flex items-center gap-3">
+                  <Bot className="w-4 h-4 text-brand-600" />
+                  <span>AI Troubleshooter</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-brand-100 text-brand-700 rounded-md">
+                  AI
+                </span>
               </NavLink>
               <NavLink to="/employee/tickets" className={navClass}>
-                <Ticket className="w-4 h-4" /> My Tickets
+                <div className="flex items-center gap-3">
+                  <Ticket className="w-4 h-4 text-slate-500 group-hover:text-brand-600 transition-colors" />
+                  <span>My Tickets</span>
+                </div>
               </NavLink>
             </nav>
           </div>
@@ -50,16 +67,30 @@ export default function Sidebar() {
         {/* Engineer Navigation */}
         {(isEngineer || isAdmin) && (
           <div>
-            <p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Support Desk</p>
+            <p className="px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+              IT Support Desk
+            </p>
             <nav className="space-y-1">
               <NavLink to="/engineer" end className={navClass}>
-                <Inbox className="w-4 h-4" /> Support Queue
+                <div className="flex items-center gap-3">
+                  <Inbox className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+                  <span>Support Queue</span>
+                </div>
               </NavLink>
               <NavLink to="/engineer/chat" className={navClass}>
-                <Bot className="w-4 h-4 text-brand-600" /> AI Diagnostic Assistant
+                <div className="flex items-center gap-3">
+                  <Bot className="w-4 h-4 text-brand-600" />
+                  <span>Diagnostic Assistant</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 rounded-md">
+                  RAG
+                </span>
               </NavLink>
               <NavLink to="/knowledge" className={navClass}>
-                <BookOpen className="w-4 h-4" /> Knowledge Base
+                <div className="flex items-center gap-3">
+                  <BookOpen className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+                  <span>Knowledge Base</span>
+                </div>
               </NavLink>
             </nav>
           </div>
@@ -68,25 +99,46 @@ export default function Sidebar() {
         {/* Admin Navigation */}
         {isAdmin && (
           <div>
-            <p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Administration</p>
+            <p className="px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
+              Administration & Governance
+            </p>
             <nav className="space-y-1">
               <NavLink to="/admin" end className={navClass}>
-                <BarChart3 className="w-4 h-4 text-purple-600" /> Analytics & SLA
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="w-4 h-4 text-purple-600" />
+                  <span>Analytics & SLA</span>
+                </div>
               </NavLink>
               <NavLink to="/admin/documents" className={navClass}>
-                <FileText className="w-4 h-4" /> Knowledge Ingestion
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-slate-500 group-hover:text-purple-600 transition-colors" />
+                  <span>Knowledge Ingestion</span>
+                </div>
               </NavLink>
               <NavLink to="/admin/users" className={navClass}>
-                <Users className="w-4 h-4" /> User Management
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-slate-500 group-hover:text-purple-600 transition-colors" />
+                  <span>User Management</span>
+                </div>
               </NavLink>
             </nav>
           </div>
         )}
       </div>
 
-      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-        <p className="text-xs font-semibold text-slate-700">IntelliDesk Enterprise</p>
-        <p className="text-[11px] text-slate-400 mt-0.5">Version 1.0 • Spring AI + pgvector</p>
+      {/* System Status Card */}
+      <div className="p-3.5 bg-gradient-to-br from-slate-50 to-slate-100/80 border border-slate-200/80 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-xs font-bold text-slate-800">Engine Online</span>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">v1.0</span>
+        </div>
+        <p className="text-[11px] text-slate-500 font-medium">Spring AI • pgvector HNSW</p>
       </div>
     </aside>
   );
