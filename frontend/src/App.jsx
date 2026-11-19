@@ -10,6 +10,7 @@ import RegisterPage from './pages/RegisterPage';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import EngineerDashboard from './pages/engineer/EngineerDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
 
 export default function App() {
   return (
@@ -53,6 +54,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <UserManagement />
               </ProtectedRoute>
             }
           />
