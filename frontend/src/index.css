@@ -4,11 +4,11 @@
 
 @layer base {
   body {
-    @apply antialiased text-slate-800 bg-[#f8fafc] selection:bg-brand-500 selection:text-white;
+    @apply antialiased text-slate-800 bg-[#f8fafc] dark:bg-[#070b14] dark:text-slate-100 selection:bg-brand-500 selection:text-white transition-colors duration-300;
   }
 }
 
-/* Subtle tech grid background */
+/* Dynamic Tech Grid Background */
 .bg-grid-pattern {
   background-size: 32px 32px;
   background-image: 
@@ -16,27 +16,38 @@
     linear-gradient(to bottom, rgba(226, 232, 240, 0.45) 1px, transparent 1px);
 }
 
+.dark .bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
 .bg-dot-pattern {
   background-image: radial-gradient(rgba(148, 163, 184, 0.25) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Glassmorphism helpers */
+.dark .bg-dot-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Glassmorphism Classes */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.glass-card-dark {
-  background: rgba(15, 23, 42, 0.85);
+.dark .glass-panel {
+  background: rgba(13, 19, 34, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Custom smooth scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -45,5 +56,5 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+  @apply bg-slate-300 dark:bg-slate-700/80 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600;
 }
