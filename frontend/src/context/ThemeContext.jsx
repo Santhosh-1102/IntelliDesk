@@ -3,21 +3,30 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  // Default to 'dark' mode as requested for an immersive, modern SaaS experience
+  // Default to 'dark' mode
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('intellidesk_theme');
-    if (savedTheme) return savedTheme;
-    return 'dark'; // Dark mode by default
+    try {
+      const savedTheme = localStorage.getItem('intellidesk_theme');
+      if (savedTheme) return savedTheme;
+    } catch (e) {}
+    return 'dark';
   });
 
   useEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
+
     if (theme === 'dark') {
       root.classList.add('dark');
+      body?.classList.add('dark');
     } else {
       root.classList.remove('dark');
+      body?.classList.remove('dark');
     }
-    localStorage.setItem('intellidesk_theme', theme);
+
+    try {
+      localStorage.setItem('intellidesk_theme', theme);
+    } catch (e) {}
   }, [theme]);
 
   const toggleTheme = () => {
