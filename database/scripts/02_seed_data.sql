@@ -25,11 +25,11 @@ ON CONFLICT (code) DO NOTHING;
 
 -- 3. Insert Initial Demo Users
 -- Note: Password for all default accounts is: Password@123
--- BCrypt hash: $2a$10$wE.6J0VzE8i9Cj0.nL0r9eu9L4qX7YQ9mN7yK1zU5n4rO8p6x2y7m
+-- BCrypt hash (12 rounds): $2a$12$0dVwYRjQrNdfRPpKI0l.PeYgjoLwl1tWOeGHJRuT3g3vDDuy8n89W
 INSERT INTO users (email, password_hash, first_name, last_name, department, active) VALUES
-('admin@intellidesk.com', '$2a$10$wE.6J0VzE8i9Cj0.nL0r9eu9L4qX7YQ9mN7yK1zU5n4rO8p6x2y7m', 'Admin', 'User', 'IT Operations', TRUE),
-('engineer@intellidesk.com', '$2a$10$wE.6J0VzE8i9Cj0.nL0r9eu9L4qX7YQ9mN7yK1zU5n4rO8p6x2y7m', 'Alex', 'Rivera', 'Tier-2 Support', TRUE),
-('employee@intellidesk.com', '$2a$10$wE.6J0VzE8i9Cj0.nL0r9eu9L4qX7YQ9mN7yK1zU5n4rO8p6x2y7m', 'Sarah', 'Chen', 'Engineering', TRUE)
+('admin@intellidesk.com', '$2a$12$0dVwYRjQrNdfRPpKI0l.PeYgjoLwl1tWOeGHJRuT3g3vDDuy8n89W', 'Admin', 'User', 'IT Operations', TRUE),
+('engineer@intellidesk.com', '$2a$12$0dVwYRjQrNdfRPpKI0l.PeYgjoLwl1tWOeGHJRuT3g3vDDuy8n89W', 'Alex', 'Rivera', 'Tier-2 Support', TRUE),
+('employee@intellidesk.com', '$2a$12$0dVwYRjQrNdfRPpKI0l.PeYgjoLwl1tWOeGHJRuT3g3vDDuy8n89W', 'Sarah', 'Chen', 'Engineering', TRUE)
 ON CONFLICT (email) DO NOTHING;
 
 -- 4. Map Users to Roles
