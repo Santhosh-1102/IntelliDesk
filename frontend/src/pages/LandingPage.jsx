@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '../components/ThemeToggle';
+import InteractiveAiSandbox from '../components/InteractiveAiSandbox';
+import InteractiveRolePreview from '../components/InteractiveRolePreview';
+import InteractiveArchitectureFlow from '../components/InteractiveArchitectureFlow';
 import { 
   Sparkles, 
   Bot, 
@@ -14,10 +17,38 @@ import {
   ChevronRight,
   Database,
   Terminal,
-  Activity
+  Activity,
+  Plus,
+  Minus,
+  MessageSquare,
+  Shield,
+  HelpCircle,
+  Clock,
+  UserCheck
 } from 'lucide-react';
 
+const FAQS = [
+  {
+    q: 'How does IntelliDesk ensure the AI does not hallucinate technical commands?',
+    a: 'Every answer is strictly grounded through a retrieval-augmented generation (RAG) pipeline against enterprise SOP documents indexed in PostgreSQL using pgvector with HNSW indexing. If cosine similarity falls below 0.82, the system automatically triggers an escalation ticket rather than guessing.',
+  },
+  {
+    q: 'Can employees run automated diagnostics directly from the chat?',
+    a: 'Yes. The system delivers structured diagnostic action steps. Verified troubleshooting scripts can be tested safely, and when a step resolves the issue, the session automatically marks the incident as self-resolved with zero IT engineer overhead.',
+  },
+  {
+    q: 'How does automatic ticket escalation work when troubleshooting fails?',
+    a: 'If a self-service diagnostic step fails or physical hardware intervention is required, IntelliDesk compiles a full AI diagnostic transcript, classifies the category and urgency, calculates SLA targets, and generates a structured ticket directly routed to the right support engineer queue.',
+  },
+  {
+    q: 'What backend architecture powers the vector search and data isolation?',
+    a: 'IntelliDesk runs on Java 21 LTS with Spring Boot 3.3.5 and Spring AI. Embeddings are stored natively in PostgreSQL 16 with pgvector and an HNSW cosine distance index. Relational integrity is enforced across 15 ACID tables with role-based access control (RBAC).',
+  },
+];
+
 export default function LandingPage() {
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -32,17 +63,17 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070b14] text-slate-900 dark:text-white overflow-x-hidden relative flex flex-col transition-colors duration-300 font-sans">
-      {/* Background Animated Blobs */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] pointer-events-none overflow-hidden -z-10">
-        <div className="absolute -top-40 left-1/4 w-96 h-96 bg-cyan-500/15 rounded-full blur-[128px] animate-blob" />
-        <div className="absolute top-20 right-1/4 w-96 h-96 bg-violet-600/20 rounded-full blur-[128px] animate-blob animation-delay-2000" />
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070b14] text-slate-900 dark:text-white overflow-x-hidden relative flex flex-col transition-colors duration-300 font-sans selection:bg-cyan-500 selection:text-white">
+      {/* Dynamic Background Glowing Orbs */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[700px] pointer-events-none overflow-hidden -z-10">
+        <div className="absolute -top-40 left-1/4 w-[500px] h-[500px] bg-cyan-500/15 rounded-full blur-[140px] animate-blob" />
+        <div className="absolute top-20 right-1/4 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[140px] animate-blob animation-delay-2000" />
       </div>
 
       {/* Grid Pattern Overlay */}
       <div className="absolute inset-0 bg-grid-pattern opacity-60 pointer-events-none -z-10" />
 
-      {/* Navigation Header */}
+      {/* Sticky Top Navigation */}
       <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/80 dark:bg-[#070b14]/85 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
@@ -80,9 +111,10 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1">
-        <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">
+      {/* Main Content */}
+      <main className="flex-1 space-y-24">
+        {/* Hero Section */}
+        <section className="pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -102,7 +134,7 @@ export default function LandingPage() {
             {/* Main Headline */}
             <motion.h1
               variants={itemVariants}
-              className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.1] max-w-5xl"
+              className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.08] max-w-5xl"
             >
               Autonomous IT Support & <br />
               <span className="bg-gradient-to-r from-cyan-400 via-brand-400 to-violet-400 bg-clip-text text-transparent">
@@ -136,148 +168,152 @@ export default function LandingPage() {
                 Create Account
               </Link>
             </motion.div>
-
-            {/* Live Interactive Mockup Card */}
-            <motion.div
-              variants={itemVariants}
-              className="mt-16 w-full max-w-4xl mx-auto rounded-3xl p-2 bg-gradient-to-b from-cyan-500/20 via-brand-500/10 to-transparent shadow-2xl shadow-cyan-500/10"
-            >
-              <div className="bg-white dark:bg-[#0d1322] rounded-[22px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                {/* Window Chrome Header */}
-                <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-rose-400" />
-                    <div className="w-3 h-3 rounded-full bg-amber-400" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                    <span className="text-xs font-mono text-slate-400 dark:text-slate-500 ml-2">intellidesk-ai-agent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
-                      RAG Connected
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
-                      pgvector Active
-                    </span>
-                  </div>
-                </div>
-
-                {/* Simulated Conversation Feed */}
-                <div className="p-6 sm:p-8 space-y-4 text-left font-sans bg-slate-50/40 dark:bg-slate-950/40">
-                  {/* User message */}
-                  <div className="flex items-start gap-3 justify-end">
-                    <div className="bg-gradient-to-r from-cyan-600 to-brand-600 text-white rounded-2xl rounded-tr-none px-4 py-3 max-w-md text-sm shadow-md">
-                      <p className="font-medium">My corporate VPN disconnects automatically every 5 minutes while working from home.</p>
-                      <span className="text-[10px] text-cyan-200 block text-right mt-1">10:42 AM</span>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-900/60 border border-cyan-200 dark:border-cyan-700/60 flex items-center justify-center text-cyan-800 dark:text-cyan-200 font-bold text-xs flex-shrink-0">
-                      SN
-                    </div>
-                  </div>
-
-                  {/* AI response with RAG citation badge */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 via-brand-500 to-violet-600 flex items-center justify-center text-white text-xs shadow-md flex-shrink-0">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl rounded-tl-none p-4 max-w-xl text-sm shadow-sm space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">IntelliDesk AI</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
-                          SOP-IT-VPN-001 (Section 3.2)
-                        </span>
-                      </div>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                        I've analyzed the Palo Alto GlobalProtect SOP. A 5-minute timeout is typically caused by IPsec UDP port throttling on home Wi-Fi. Let's switch to the SSL fallback tunnel:
-                      </p>
-
-                      {/* Interactive Step Card */}
-                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Diagnostic Step 1 of 3</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
-                            Action Required
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          Open GlobalProtect Settings &gt; Troubleshooting &gt; Enable <strong>"Prefer SSL Tunnel over IPsec (TCP Port 443)"</strong>.
-                        </p>
-                        <div className="flex items-center gap-2 pt-1">
-                          <button className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">
-                            ✓ Worked, Issue Solved!
-                          </button>
-                          <button className="px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
-                            Didn't work, next step
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </motion.div>
         </section>
 
+        {/* Feature 1: The Interactive AI Diagnostics Sandbox */}
+        <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
+            <span className="text-xs font-black tracking-widest uppercase text-cyan-500">Live Interactive Simulator</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              Test Real Technical Incidents In Real-Time
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Click any scenario below to experience grounded vector retrieval, simulated command execution, and automated escalation.
+            </p>
+          </div>
+
+          <InteractiveAiSandbox />
+        </section>
+
         {/* Live Metrics Showcase Strip */}
-        <section className="border-y border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0a0f1d] py-12 transition-colors">
+        <section className="border-y border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0a0f1d] py-14 transition-colors">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="text-4xl font-black text-cyan-500 tracking-tight">52%</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">Tier-1 Deflection Rate</p>
+            <div className="space-y-1">
+              <p className="text-5xl font-black text-cyan-500 tracking-tight">52.4%</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tier-1 Deflection Rate</p>
+              <p className="text-[11px] text-slate-400">Self-resolved without human tickets</p>
             </div>
-            <div>
-              <p className="text-4xl font-black text-brand-500 tracking-tight">&lt; 250ms</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">Vector Search Latency</p>
+            <div className="space-y-1">
+              <p className="text-5xl font-black text-brand-500 tracking-tight">&lt; 25ms</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vector Search Latency</p>
+              <p className="text-[11px] text-slate-400">pgvector HNSW Cosine indexing</p>
             </div>
-            <div>
-              <p className="text-4xl font-black text-violet-500 tracking-tight">15 Tables</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">ACID Relational Architecture</p>
+            <div className="space-y-1">
+              <p className="text-5xl font-black text-violet-500 tracking-tight">15 Tables</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ACID Relational Model</p>
+              <p className="text-[11px] text-slate-400">Complete audit trail & RBAC</p>
             </div>
-            <div>
-              <p className="text-4xl font-black text-emerald-500 tracking-tight">100%</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">Audit Trail Accountability</p>
+            <div className="space-y-1">
+              <p className="text-5xl font-black text-emerald-500 tracking-tight">99.8%</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">SLA Adherence</p>
+              <p className="text-[11px] text-slate-400">Automated incident escalation</p>
             </div>
           </div>
         </section>
 
-        {/* Feature Cards Grid */}
-        <section className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <h2 className="text-xs font-bold tracking-widest uppercase text-cyan-500">Enterprise Capabilities</h2>
-            <p className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Designed for modern IT departments and enterprise scale
+        {/* Feature 2: Interactive Role Switcher Explorer */}
+        <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
+            <span className="text-xs font-black tracking-widest uppercase text-violet-500">Tailored Workspaces</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              One Unified Platform, Three Tailored Experiences
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Explore how IntelliDesk personalizes the interface for Employees, IT Support Engineers, and Executive Administrators.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-white dark:bg-[#0d1322] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-6">
-                <Bot className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Conversational Self-Service</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-medium">
-                Guided multi-turn diagnostic loops ask the right technical questions and verify user configuration before logging tickets.
-              </p>
-            </div>
+          <InteractiveRolePreview />
+        </section>
 
-            <div className="p-8 rounded-3xl bg-white dark:bg-[#0d1322] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-6">
-                <Cpu className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">pgvector RAG Pipeline</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-medium">
-                Apache Tika extracts manuals, chunks them, and stores vector embeddings directly in PostgreSQL using an HNSW cosine index.
-              </p>
-            </div>
+        {/* Feature 3: Interactive Architecture Pipeline */}
+        <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
+            <span className="text-xs font-black tracking-widest uppercase text-cyan-500">Under The Hood</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              Explore The End-to-End RAG Architecture
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Click any stage in the pipeline to reveal technical specifications, latencies, and underlying components.
+            </p>
+          </div>
 
-            <div className="p-8 rounded-3xl bg-white dark:bg-[#0d1322] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-6">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Contextual Escalation</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-medium">
-                When an issue requires physical hardware or human privileges, the AI generates a ticket with an AI summary of all attempted steps.
+          <InteractiveArchitectureFlow />
+        </section>
+
+        {/* FAQ Section */}
+        <section className="px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pb-12">
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
+            <span className="text-xs font-black tracking-widest uppercase text-cyan-500">Frequently Asked Questions</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              Enterprise Grade By Design
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            {FAQS.map((faq, idx) => {
+              const isOpen = openFaqIndex === idx;
+
+              return (
+                <div
+                  key={idx}
+                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1322] overflow-hidden transition-all shadow-sm"
+                >
+                  <button
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-slate-900 dark:text-white hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 flex-shrink-0">
+                      {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="px-5 pb-5 pt-1 text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium border-t border-slate-100 dark:border-slate-800/60">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Bottom CTA Banner */}
+        <section className="px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto pb-20">
+          <div className="rounded-3xl p-8 sm:p-12 bg-gradient-to-r from-cyan-600 via-brand-600 to-violet-700 text-white text-center relative overflow-hidden shadow-2xl shadow-cyan-500/20">
+            <div className="max-w-2xl mx-auto space-y-4 relative z-10">
+              <h3 className="text-3xl sm:text-4xl font-black tracking-tight">
+                Ready to Experience Next-Gen IT Troubleshooting?
+              </h3>
+              <p className="text-sm text-cyan-100 font-medium">
+                Try the live application right now with pre-seeded demo accounts for Employees, IT Engineers, and Admins.
               </p>
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to="/login"
+                  className="px-8 py-3.5 rounded-2xl bg-white text-slate-900 font-black text-sm hover:bg-slate-50 shadow-xl transition-all hover:scale-105"
+                >
+                  Sign In with Demo Role
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-8 py-3.5 rounded-2xl bg-cyan-900/40 border border-white/30 text-white font-bold text-sm hover:bg-cyan-900/60 transition-all"
+                >
+                  Create New Account
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -290,7 +326,7 @@ export default function LandingPage() {
             <Sparkles className="w-4 h-4 text-cyan-500" />
             <span className="font-bold text-slate-800 dark:text-slate-200">IntelliDesk Enterprise</span>
           </div>
-          <p>© 2026 IntelliDesk. Built with Java 21, Spring Boot 3, React 18, and pgvector.</p>
+          <p>© 2026 IntelliDesk. Built with Java 21, Spring Boot 3, React 18, and PostgreSQL pgvector.</p>
         </div>
       </footer>
     </div>
