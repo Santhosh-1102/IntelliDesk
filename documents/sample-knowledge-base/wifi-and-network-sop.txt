@@ -1,0 +1,34 @@
+# Standard Operating Procedure (SOP): Office Wi-Fi and Local Network Connectivity
+Document ID: SOP-IT-NET-002
+Category: Network & Connectivity
+Target Audience: All Employees
+
+## 1. Overview
+Guidelines for resolving Wi-Fi connection drops, "Connected, no Internet", and IP address assignment failures on corporate laptops.
+
+## 2. Preliminary Diagnostics
+Before contacting IT support, determine the scope:
+1. Is the problem isolated to your laptop, or are colleagues around you also affected?
+2. Are other devices (e.g., mobile phones) able to access the internet via the same SSID?
+
+## 3. Recommended Troubleshooting Workflow
+
+### Step 1: Network Adapter Toggle
+1. Press Windows Key + A to open Quick Settings.
+2. Turn Wi-Fi Off, wait 10 seconds, and turn Wi-Fi back On.
+3. Re-select the corporate SSID: `IntelliDesk-Corp-Secure` (do NOT use `IntelliDesk-Guest` for work laptops).
+
+### Step 2: Renew DHCP Lease and Flush DNS
+Open Windows Terminal or Command Prompt and execute:
+1. `ipconfig /release`
+2. `ipconfig /renew`
+3. `ipconfig /flushdns`
+Verify that your IPv4 address begins with `10.240.x.x`. If your IP address begins with `169.254.x.x` (APIPA), the DHCP scope is exhausted or the wireless access point is offline.
+
+### Step 3: Network Reset
+1. Open Windows Settings > Network & Internet > Advanced network settings > Network reset.
+2. Click "Reset now".
+3. Restart the laptop when prompted. Windows will reinstall all network adapters to factory defaults.
+
+## 4. Escalation Criteria
+If the IP address remains in the APIPA range (169.254.x.x) or the Wi-Fi adapter is disabled in Device Manager, submit a Critical ticket to Network Support.

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # Primary Relational & Vector Database (PostgreSQL 16 with pgvector)
+  # =========================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: intellidesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: intellidesk_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./database/scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d intellidesk_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================================================================
+  # In-Memory Cache (Redis)
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: intellidesk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgvector_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -1,0 +1,34 @@
+# Standard Operating Procedure (SOP): Enterprise GlobalProtect VPN Troubleshooting
+Document ID: SOP-IT-VPN-001
+Category: VPN & Remote Access
+Target Audience: Employees and Tier-1 Support
+
+## 1. Overview
+This procedure outlines the diagnostic steps for employees experiencing frequent disconnects, authentication timeouts, or gateway failures when connecting to the corporate GlobalProtect VPN.
+
+## 2. Common Symptoms & Root Causes
+- Gateway Timeout (Error 504): Corporate portal is under heavy load or local ISP is throttling UDP packets on port 4501.
+- Immediate Disconnection after 5 minutes: IPsec MTU packet fragmentation or stale session tokens.
+- Invalid Certificate Warning: Client machine clock is desynchronized from Active Directory domain controllers.
+
+## 3. Step-by-Step Resolution Procedures
+
+### Step 1: Verify System Time Synchronization
+1. Open Windows Settings > Time & Language > Date & Time.
+2. Ensure "Set time automatically" is enabled.
+3. Click "Sync now" under Additional settings. If clock drift exceeds 120 seconds, Kerberos authentication will reject the VPN session.
+
+### Step 2: Switch VPN Tunnel Protocol from IPsec to SSL Fallback
+1. Open GlobalProtect client from the system tray.
+2. Click the hamburger menu (top right) > Settings > Troubleshooting.
+3. Check the option: "Prefer SSL Tunnel over IPsec (TCP Port 443)".
+4. Reconnect to the primary gateway: `vpn-primary.corp.intellidesk.com`.
+
+### Step 3: Clear Stale Credentials and Cache
+1. Disconnect the VPN.
+2. Open PowerShell as Administrator and run:
+   ipconfig /flushdns
+3. In GlobalProtect, click Sign Out, then sign in with your corporate email and multi-factor authenticator token.
+
+## 4. Escalation Policy
+If all 3 steps fail, escalate the issue to the Network Operations Team (Tier-2). Request a temporary software profile reset in Palo Alto Panorama.
