@@ -11,6 +11,11 @@ import com.intellidesk.utils.TicketNumberGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.model.Media;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
+import java.util.Base64;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -61,6 +66,14 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
+        String rawMsg = request.getMessage();
+        boolean hasImage = request.getImageBase64() != null && !request.getImageBase64().isBlank();
+        String messageText = (rawMsg != null && !rawMsg.isBlank()) ? rawMsg.trim() :
+                (hasImage ? "Please inspect the attached screenshot / photo and diagnose the issue." : "");
+        if (messageText.isBlank()) {
+            throw new BadRequestException("Message content or an attached screenshot/photo is required");
+        }
+
         AiConversation conversation;
         boolean isNewSession = false;
 
@@ -80,18 +93,21 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         } else {
             // Create new session
             String newSessionId = "SESSION-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            String initialQuery = request.getMessage().trim();
+            String initialQuery = messageText;
             conversation = new AiConversation(newSessionId, user, initialQuery);
             conversation = conversationRepository.save(conversation);
             isNewSession = true;
         }
 
         // Save User Message
-        AiMessage userMsg = new AiMessage(conversation, SenderType.USER, request.getMessage().trim());
+        AiMessage userMsg = new AiMessage(conversation, SenderType.USER, messageText);
+        if (hasImage) {
+            userMsg.setImageData(request.getImageBase64());
+        }
         messageRepository.save(userMsg);
 
         // Classify domain and generate response
-        String category = classifyDomain(conversation.getInitialQuery(), request.getMessage());
+        String category = classifyDomain(conversation.getInitialQuery(), messageText);
         conversation.setIdentifiedCategory(category);
 
         // Fetch conversation history
@@ -99,7 +115,14 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         List<TroubleshootingStep> existingSteps = stepRepository.findByConversationIdOrderByStepNumberAsc(conversation.getId());
 
         // Generate AI diagnostic response and steps
-        DiagnosticPlan plan = generateDiagnosticPlan(conversation, request.getMessage(), history, existingSteps);
+        DiagnosticPlan plan = generateDiagnosticPlan(
+                conversation,
+                messageText,
+                request.getImageBase64(),
+                request.getImageMimeType(),
+                history,
+                existingSteps
+        );
 
         // Save Assistant Message
         AiMessage assistantMsg = new AiMessage(conversation, SenderType.ASSISTANT, plan.getReply());
@@ -363,7 +386,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         );
 
         List<AiMessageDto> messageDtos = messages.stream()
-                .map(m -> new AiMessageDto(m.getId(), m.getSenderType().name(), m.getContent(), m.getContextCitations(), m.getCreatedAt()))
+                .map(m -> new AiMessageDto(m.getId(), m.getSenderType().name(), m.getContent(), m.getContextCitations(), m.getImageData(), m.getCreatedAt()))
                 .collect(Collectors.toList());
 
         List<DiagnosticStepDto> stepDtos = steps.stream()
@@ -420,6 +443,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
     private DiagnosticPlan generateDiagnosticPlan(
             AiConversation conversation,
             String userMessage,
+            String imageBase64,
+            String imageMimeType,
             List<AiMessage> history,
             List<TroubleshootingStep> existingSteps
     ) {
@@ -427,11 +452,42 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         ChatClient chatClient = chatClientProvider.getIfAvailable();
         if (chatClient != null) {
             try {
-                String promptText = buildPrompt(conversation, userMessage, history);
-                String aiReply = chatClient.prompt()
-                        .user(promptText)
-                        .call()
-                        .content();
+                boolean hasImage = imageBase64 != null && !imageBase64.isBlank();
+                String promptText = buildPrompt(conversation, userMessage, history, hasImage);
+                String aiReply;
+
+                if (hasImage) {
+                    // Extract Base64 bytes & MIME type
+                    String rawBase64 = imageBase64;
+                    String mimeStr = (imageMimeType != null && !imageMimeType.isBlank()) ? imageMimeType : "image/jpeg";
+                    if (rawBase64.contains(",")) {
+                        String prefix = rawBase64.substring(0, rawBase64.indexOf(","));
+                        if (prefix.contains("image/")) {
+                            int start = prefix.indexOf("image/");
+                            int end = prefix.indexOf(";", start);
+                            if (end > start) {
+                                mimeStr = prefix.substring(start, end);
+                            }
+                        }
+                        rawBase64 = rawBase64.substring(rawBase64.indexOf(",") + 1);
+                    }
+                    byte[] imageBytes = Base64.getDecoder().decode(rawBase64.trim());
+                    MimeType mimeType = MimeTypeUtils.parseMimeType(mimeStr);
+                    Media media = new Media(mimeType, imageBytes);
+
+                    log.info("Dispatching multimodal vision prompt with image ({} bytes, mime={}) to Gemini model for session: {}",
+                            imageBytes.length, mimeType, conversation.getSessionId());
+
+                    aiReply = chatClient.prompt()
+                            .user(u -> u.text(promptText).media(media))
+                            .call()
+                            .content();
+                } else {
+                    aiReply = chatClient.prompt()
+                            .user(promptText)
+                            .call()
+                            .content();
+                }
 
                 if (aiReply != null && !aiReply.isBlank()) {
                     log.info("Successfully generated dynamic AI response from Gemini model for session: {}", conversation.getSessionId());
@@ -439,7 +495,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     return new DiagnosticPlan(aiReply, "Google Gemini 3.5 Flash", 0.98, steps);
                 }
             } catch (Exception e) {
-                log.warn("Spring AI ChatClient call failed: {}", e.getMessage());
+                log.warn("Spring AI ChatClient call failed: {}", e.getMessage(), e);
             }
         }
 
@@ -460,12 +516,15 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         return new DiagnosticPlan(fallbackReply, "IntelliDesk Fallback Service", 0.50, fallbackSteps);
     }
 
-    private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history) {
+    private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history, boolean hasImage) {
         StringBuilder sb = new StringBuilder();
         sb.append("You are the IntelliDesk Enterprise IT AI Specialist. Guide enterprise employees step-by-step with practical, user-friendly instructions:\n");
         sb.append("Formatting & Communication Style:\n");
         sb.append("- Explain what is happening in simple, clear, conversational terms (like a friendly, expert colleague).\n");
         sb.append("- Structure your solution with clean Markdown headings, bullet points, and numbered steps.\n");
+        if (hasImage) {
+            sb.append("- VISUAL INSPECTION DIRECTIVE: An image/photo or screenshot has been provided by the user. Carefully inspect it. Specifically identify any on-screen error dialogs, error codes, application crashes, visual hardware artifacts (such as green/pink/black vertical or horizontal lines, screen flickering, discoloration, physical damage), taskbar status, or Device Manager warnings visible in the image. State clearly what you observe in the image and provide tailored, accurate diagnosis based on the visual evidence.\n");
+        }
         sb.append("- For software/configuration issues: guide them step-by-step through Windows Settings (exact paths like 'Press Win + I > System > Display > Multiple displays > Detect').\n");
         sb.append("- Guide them through Device Manager when relevant (Win + X > Device Manager > expand category > update/reinstall driver).\n");
         sb.append("- Guide them to open Google Chrome and download official drivers from their manufacturer (Dell, HP, Lenovo, Intel, etc.) when needed.\n");

@@ -31,7 +31,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   ChevronDown,
-  X
+  X,
+  ImagePlus,
+  Maximize2
 } from 'lucide-react';
 
 const SUGGESTED_PROMPTS = [
@@ -68,6 +70,9 @@ export default function AiChatAssistant() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [copiedCode, setCopiedCode] = useState(null);
   const [activeStepFeedback, setActiveStepFeedback] = useState({});
+  const [attachedImage, setAttachedImage] = useState(null); // { base64, mimeType, name, size }
+  const [previewModalImage, setPreviewModalImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Escalation Modal
   const [isEscalateModalOpen, setIsEscalateModalOpen] = useState(false);
@@ -103,12 +108,46 @@ export default function AiChatAssistant() {
     }
   };
 
+  const handleImageSelect = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, WebP, etc.)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAttachedImage({
+        base64: e.target.result,
+        mimeType: file.type,
+        name: file.name,
+        size: (file.size / 1024).toFixed(1) + ' KB'
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        handleImageSelect(file);
+        break;
+      }
+    }
+  };
+
   const handleStartNewChat = () => {
     setSessionId(null);
     setSessionStatus('ACTIVE');
     setMessages([]);
+    setAttachedImage(null);
     setEscalatedTicketInfo(null);
-    if (inputRef.current) inputRef.current.focus();
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.focus();
+    }
   };
 
   const handleSelectSession = async (selectedSessionId) => {
@@ -135,6 +174,7 @@ export default function AiChatAssistant() {
           id: m.id || Math.random(),
           sender: m.senderType,
           content: m.content,
+          imageData: m.imageData,
           timestamp: m.createdAt,
           diagnosticSteps: isLastAssistant ? allSteps : []
         };
@@ -149,14 +189,21 @@ export default function AiChatAssistant() {
 
   const handleSendMessage = async (textToSend = null) => {
     const text = (textToSend || inputMessage).trim();
-    if (!text || isSending) return;
+    if ((!text && !attachedImage) || isSending) return;
 
+    const imagePayload = attachedImage;
     setInputMessage('');
+    setAttachedImage(null);
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
+
     const userMessageId = Date.now();
     const newUserMsg = {
       id: userMessageId,
       sender: 'USER',
-      content: text,
+      content: text || 'Please inspect and diagnose the attached screenshot / photo.',
+      imageData: imagePayload ? imagePayload.base64 : null,
       timestamp: new Date().toISOString()
     };
 
@@ -165,8 +212,10 @@ export default function AiChatAssistant() {
 
     try {
       const response = await aiService.sendMessage({
-        message: text,
-        sessionId: sessionId || undefined
+        message: text || 'Please inspect and diagnose the attached screenshot / photo.',
+        sessionId: sessionId || undefined,
+        imageBase64: imagePayload ? imagePayload.base64 : undefined,
+        imageMimeType: imagePayload ? imagePayload.mimeType : undefined
       });
 
       // Update sessionId if new
@@ -519,7 +568,20 @@ export default function AiChatAssistant() {
                           }`}
                         >
                           {isUser ? (
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            <div className="space-y-2">
+                              {msg.imageData && (
+                                <div className="overflow-hidden rounded-2xl border border-white/20 shadow-md">
+                                  <img
+                                    src={msg.imageData}
+                                    alt="User uploaded diagnostic screenshot"
+                                    className="max-h-72 w-auto max-w-full rounded-2xl object-contain cursor-pointer hover:opacity-95 transition-opacity"
+                                    onClick={() => setPreviewModalImage(msg.imageData)}
+                                    title="Click to view full size"
+                                  />
+                                </div>
+                              )}
+                              <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                            </div>
                           ) : (
                             <div>
                               <MarkdownMessage content={msg.content} />
@@ -641,37 +703,118 @@ export default function AiChatAssistant() {
                   </button>
                 </div>
               ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }}
-                  className="flex items-center gap-2 bg-white dark:bg-[#0c1222] rounded-2xl border border-slate-300 dark:border-slate-700/80 p-1.5 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/20 shadow-sm transition-all"
-                >
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Describe your IT issue, command output, or error message..."
-                    className="flex-1 px-4 py-2 text-xs sm:text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
-                    disabled={isSending}
-                  />
+                <div>
+                  {/* Floating Attached Image Preview */}
+                  {attachedImage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="mb-2.5 inline-flex items-center gap-3 p-2 bg-white dark:bg-[#0c1222] rounded-2xl border border-cyan-500/40 shadow-lg shadow-cyan-500/10"
+                    >
+                      <div className="relative group cursor-pointer" onClick={() => setPreviewModalImage(attachedImage.base64)}>
+                        <img
+                          src={attachedImage.base64}
+                          alt="Screenshot Preview"
+                          className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-inner group-hover:opacity-90 transition-opacity"
+                        />
+                      </div>
+                      <div className="text-left pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            Screenshot
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px] mt-0.5">
+                          {attachedImage.name}
+                        </p>
+                        <span className="text-[10px] text-slate-400 font-mono">{attachedImage.size}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedImage(null)}
+                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 flex items-center justify-center transition-colors"
+                        title="Remove attached screenshot"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
 
-                  <motion.button
-                    type="submit"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    disabled={!inputMessage.trim() || isSending}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20 hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="flex items-end gap-2 bg-white dark:bg-[#0c1222] rounded-2xl border border-slate-300 dark:border-slate-700/80 p-2 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/20 shadow-sm transition-all"
                   >
-                    {isSending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                  </motion.button>
-                </form>
+                    {/* Hidden File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleImageSelect(e.target.files[0]);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                    />
+
+                    {/* Attach Image / Screenshot Button */}
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-10 h-10 rounded-xl text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 dark:hover:bg-cyan-500/10 flex items-center justify-center transition-colors flex-shrink-0 mb-0.5"
+                      title="Attach photo or screenshot (or paste with Ctrl+V)"
+                    >
+                      <ImagePlus className="w-5 h-5" />
+                    </motion.button>
+
+                    {/* Auto-expanding Textarea to fit text without scrolling in a straight line */}
+                    <textarea
+                      ref={inputRef}
+                      rows={1}
+                      value={inputMessage}
+                      onChange={(e) => {
+                        setInputMessage(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      onPaste={handlePaste}
+                      placeholder={
+                        attachedImage
+                          ? 'Add details about this screenshot (Optional) - Press Enter to send'
+                          : 'Describe your IT issue or paste a screenshot (Ctrl+V)... Press Enter to send, Shift+Enter for new line'
+                      }
+                      className="flex-1 px-3 py-2 text-xs sm:text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none resize-none max-h-36 leading-relaxed overflow-y-auto"
+                      disabled={isSending}
+                    />
+
+                    {/* Send Button */}
+                    <motion.button
+                      type="submit"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      disabled={(!inputMessage.trim() && !attachedImage) || isSending}
+                      className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20 hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 mb-0.5"
+                    >
+                      {isSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </motion.button>
+                  </form>
+                </div>
               )}
             </div>
           </div>
@@ -765,6 +908,37 @@ export default function AiChatAssistant() {
                   Escalate & Open Ticket
                 </motion.button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Screenshot Fullscreen Lightbox Modal */}
+      <AnimatePresence>
+        {previewModalImage && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={() => setPreviewModalImage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl max-h-[85vh] rounded-3xl overflow-hidden shadow-2xl border border-white/20 p-2 bg-[#0c1222]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setPreviewModalImage(null)}
+                className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center shadow-lg transition-all"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={previewModalImage}
+                alt="Enlarged screenshot preview"
+                className="max-h-[80vh] w-auto max-w-full object-contain rounded-2xl mx-auto"
+              />
             </motion.div>
           </div>
         )}

@@ -1,15 +1,16 @@
 package com.intellidesk.dto.ai;
 
-import jakarta.validation.constraints.NotBlank;
-
 public class AiChatRequest {
 
     private String sessionId; // Optional: If null/blank, backend starts a new conversation session
 
-    @NotBlank(message = "Message content is required")
     private String message;
 
     private String categoryHint;
+
+    private String imageBase64; // Optional: Base64-encoded image data or data URI
+
+    private String imageMimeType; // e.g. "image/png", "image/jpeg"
 
     public AiChatRequest() {}
 
@@ -40,5 +41,21 @@ public class AiChatRequest {
 
     public void setCategoryHint(String categoryHint) {
         this.categoryHint = categoryHint;
+    }
+
+    public String getImageBase64() {
+        return imageBase64;
+    }
+
+    public void setImageBase64(String imageBase64) {
+        this.imageBase64 = imageBase64;
+    }
+
+    public String getImageMimeType() {
+        return imageMimeType;
+    }
+
+    public void setImageMimeType(String imageMimeType) {
+        this.imageMimeType = imageMimeType;
     }
 }

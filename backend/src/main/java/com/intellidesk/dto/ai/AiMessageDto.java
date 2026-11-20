@@ -8,6 +8,7 @@ public class AiMessageDto {
     private String senderType; // USER, ASSISTANT, SYSTEM
     private String content;
     private String contextCitations;
+    private String imageData;
     private Instant createdAt;
 
     public AiMessageDto() {}
@@ -17,6 +18,15 @@ public class AiMessageDto {
         this.senderType = senderType;
         this.content = content;
         this.contextCitations = contextCitations;
+        this.createdAt = createdAt;
+    }
+
+    public AiMessageDto(Long id, String senderType, String content, String contextCitations, String imageData, Instant createdAt) {
+        this.id = id;
+        this.senderType = senderType;
+        this.content = content;
+        this.contextCitations = contextCitations;
+        this.imageData = imageData;
         this.createdAt = createdAt;
     }
 
@@ -50,6 +60,14 @@ public class AiMessageDto {
 
     public void setContextCitations(String contextCitations) {
         this.contextCitations = contextCitations;
+    }
+
+    public String getImageData() {
+        return imageData;
+    }
+
+    public void setImageData(String imageData) {
+        this.imageData = imageData;
     }
 
     public Instant getCreatedAt() {

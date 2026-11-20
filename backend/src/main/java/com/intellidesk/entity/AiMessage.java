@@ -26,6 +26,9 @@ public class AiMessage {
     @Column(name = "context_citations", columnDefinition = "TEXT")
     private String contextCitations;
 
+    @Column(name = "image_data", columnDefinition = "TEXT")
+    private String imageData;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -75,6 +78,14 @@ public class AiMessage {
 
     public void setContextCitations(String contextCitations) {
         this.contextCitations = contextCitations;
+    }
+
+    public String getImageData() {
+        return imageData;
+    }
+
+    public void setImageData(String imageData) {
+        this.imageData = imageData;
     }
 
     public Instant getCreatedAt() {
