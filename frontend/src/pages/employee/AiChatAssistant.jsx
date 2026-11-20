@@ -177,7 +177,7 @@ export default function AiChatAssistant() {
         sender: 'ASSISTANT',
         content: response.reply,
         timestamp: new Date().toISOString(),
-        diagnosticSteps: response.diagnosticSteps || [],
+        diagnosticSteps: response.steps || response.diagnosticSteps || [],
         escalationSuggested: response.escalationSuggested,
         escalationReason: response.escalationReason
       };
@@ -199,21 +199,21 @@ export default function AiChatAssistant() {
     }
   };
 
-  const handleStepFeedback = async (stepNumber, worked) => {
-    if (!sessionId) return;
-    setActiveStepFeedback((prev) => ({ ...prev, [stepNumber]: 'SUBMITTING' }));
+  const handleStepFeedback = async (step, worked) => {
+    if (!step || !step.id) return;
+    const stepKey = step.id;
+    setActiveStepFeedback((prev) => ({ ...prev, [stepKey]: 'SUBMITTING' }));
 
     try {
       const response = await aiService.submitStepFeedback({
-        sessionId,
-        stepNumber,
+        stepId: step.id,
         worked,
-        notes: worked ? 'Worked successfully' : 'Did not fix the issue'
+        userNotes: worked ? 'Self-resolved successfully' : 'Did not resolve the issue'
       });
 
       setActiveStepFeedback((prev) => ({
         ...prev,
-        [stepNumber]: worked ? 'RESOLVED' : 'FAILED'
+        [stepKey]: worked ? 'RESOLVED' : 'FAILED'
       }));
 
       if (worked) {
@@ -233,14 +233,14 @@ export default function AiChatAssistant() {
           sender: 'ASSISTANT',
           content: response.reply,
           timestamp: new Date().toISOString(),
-          diagnosticSteps: response.diagnosticSteps || []
+          diagnosticSteps: response.steps || response.diagnosticSteps || []
         };
         setMessages((prev) => [...prev, confirmMsg]);
       }
       loadRecentSessions();
     } catch (err) {
       console.error('Error submitting step feedback:', err);
-      setActiveStepFeedback((prev) => ({ ...prev, [stepNumber]: null }));
+      setActiveStepFeedback((prev) => ({ ...prev, [stepKey]: null }));
     }
   };
 
@@ -251,9 +251,8 @@ export default function AiChatAssistant() {
     try {
       const response = await aiService.escalateSession({
         sessionId,
-        reason: 'User requested escalation to human IT team',
-        userNotes: escalateNotes.trim(),
-        priority: escalatePriority
+        priority: escalatePriority,
+        additionalNotes: escalateNotes.trim()
       });
 
       setSessionStatus('ESCALATED');
@@ -521,13 +520,17 @@ export default function AiChatAssistant() {
                         {!isUser && msg.diagnosticSteps && msg.diagnosticSteps.length > 0 && (
                           <div className="space-y-3 w-full">
                             {msg.diagnosticSteps.map((step) => {
-                              const stepState = activeStepFeedback[step.stepNumber];
-                              const isStepResolved = stepState === 'RESOLVED' || step.status === 'SUCCEEDED';
-                              const isStepFailed = stepState === 'FAILED' || step.status === 'FAILED';
+                              const stepKey = step.id || step.stepNumber;
+                              const stepState = activeStepFeedback[stepKey] || (step.status === 'SUCCEEDED' ? 'RESOLVED' : step.status === 'FAILED' ? 'FAILED' : null);
+                              const isStepResolved = stepState === 'RESOLVED';
+                              const isStepFailed = stepState === 'FAILED';
+                              const stepTitle = step.title || step.stepTitle || `Step ${step.stepNumber}`;
+                              const instructions = step.instructions || step.description;
+                              const command = step.commandToRun || step.commandSnippet;
 
                               return (
                                 <motion.div
-                                  key={step.stepNumber}
+                                  key={stepKey}
                                   initial={{ opacity: 0, scale: 0.98 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   className={`p-4 rounded-2xl border transition-all ${
@@ -545,7 +548,7 @@ export default function AiChatAssistant() {
                                         {step.stepNumber}
                                       </span>
                                       <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                                        {step.stepTitle}
+                                        {stepTitle}
                                       </h4>
                                     </div>
                                     <span
@@ -562,22 +565,24 @@ export default function AiChatAssistant() {
                                   </div>
 
                                   {/* Step Description */}
-                                  <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
-                                    {step.description}
-                                  </p>
+                                  {instructions && (
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+                                      {instructions}
+                                    </p>
+                                  )}
 
                                   {/* CLI Command Box */}
-                                  {step.commandSnippet && (
+                                  {command && (
                                     <div className="relative mb-3 rounded-xl bg-slate-950 border border-slate-800 p-3 font-mono text-xs text-cyan-300 flex items-center justify-between group">
                                       <div className="flex items-center gap-2 overflow-x-auto pr-8">
                                         <Terminal className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                                        <span>{step.commandSnippet}</span>
+                                        <span>{command}</span>
                                       </div>
                                       <button
-                                        onClick={() => copyToClipboard(step.commandSnippet, step.stepNumber)}
+                                        onClick={() => copyToClipboard(command, stepKey)}
                                         className="absolute right-2 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-sans font-semibold flex items-center gap-1 transition-all"
                                       >
-                                        {copiedCode === step.stepNumber ? (
+                                        {copiedCode === stepKey ? (
                                           <>
                                             <Check className="w-3 h-3 text-emerald-400" /> Copied
                                           </>
@@ -604,7 +609,7 @@ export default function AiChatAssistant() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         disabled={stepState === 'SUBMITTING'}
-                                        onClick={() => handleStepFeedback(step.stepNumber, true)}
+                                        onClick={() => handleStepFeedback(step, true)}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-sm shadow-emerald-500/20 transition-all disabled:opacity-50"
                                       >
                                         {stepState === 'SUBMITTING' ? (
@@ -619,7 +624,7 @@ export default function AiChatAssistant() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         disabled={stepState === 'SUBMITTING'}
-                                        onClick={() => handleStepFeedback(step.stepNumber, false)}
+                                        onClick={() => handleStepFeedback(step, false)}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 hover:bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/30 transition-all disabled:opacity-50"
                                       >
                                         <ThumbsDown className="w-3 h-3" />
