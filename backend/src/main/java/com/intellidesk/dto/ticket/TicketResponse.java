@@ -41,6 +41,7 @@ public class TicketResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant resolvedAt;
+    private Instant slaDeadline;
 
     public TicketResponse() {}
 
@@ -82,6 +83,7 @@ public class TicketResponse {
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setResolvedAt(ticket.getResolvedAt());
+        dto.setSlaDeadline(ticket.getSlaDeadline());
 
         return dto;
     }
@@ -268,5 +270,13 @@ public class TicketResponse {
 
     public void setResolvedAt(Instant resolvedAt) {
         this.resolvedAt = resolvedAt;
+    }
+
+    public Instant getSlaDeadline() {
+        return slaDeadline;
+    }
+
+    public void setSlaDeadline(Instant slaDeadline) {
+        this.slaDeadline = slaDeadline;
     }
 }

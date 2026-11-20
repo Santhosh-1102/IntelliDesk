@@ -66,6 +66,16 @@ export const knowledgeService = {
     });
     return response.data;
   },
+
+  /**
+   * Fetch detected corporate knowledge gaps (missing SOP queries)
+   */
+  getKnowledgeGaps: async (page = 0, size = 20) => {
+    const response = await api.get('/admin/knowledge-gaps', {
+      params: { page, size },
+    });
+    return response.data;
+  },
 };
 
 export default knowledgeService;

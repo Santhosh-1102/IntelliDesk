@@ -71,3 +71,6 @@ uploads/
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
+
+# Scratch Files
+scratch/

@@ -64,8 +64,13 @@ export default function KnowledgeBaseManagement() {
 
   const fileInputRef = useRef(null);
 
+  // Knowledge gaps state
+  const [knowledgeGaps, setKnowledgeGaps] = useState([]);
+  const [loadingGaps, setLoadingGaps] = useState(false);
+
   useEffect(() => {
     loadDocuments(page);
+    loadKnowledgeGaps();
   }, [page]);
 
   const loadDocuments = async (pageNum = 0) => {
@@ -80,6 +85,24 @@ export default function KnowledgeBaseManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadKnowledgeGaps = async () => {
+    setLoadingGaps(true);
+    try {
+      const data = await knowledgeService.getKnowledgeGaps(0, 10);
+      setKnowledgeGaps(data || []);
+    } catch (err) {
+      console.error('Failed to load knowledge gaps:', err);
+    } finally {
+      setLoadingGaps(false);
+    }
+  };
+
+  const handleIngestForGap = (gap) => {
+    setUploadCategory(gap.category || CATEGORIES[0]);
+    setUploadTitle(`SOP: ${gap.query ? gap.query.substring(0, 45) : gap.category}`);
+    setIsUploadModalOpen(true);
   };
 
   const handleFileDrop = (e) => {
@@ -495,6 +518,80 @@ export default function KnowledgeBaseManagement() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+
+          {/* Detected Knowledge Gaps & Missing SOPs Section */}
+          <div className="bg-white dark:bg-[#0c1222] border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Detected Knowledge Gaps (Missing SOPs)
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Employee queries that lacked matching SOP documentation or failed self-service.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={loadKnowledgeGaps}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Refresh Gaps"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingGaps ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {loadingGaps ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                Loading knowledge gap insights...
+              </div>
+            ) : knowledgeGaps.length === 0 ? (
+              <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>No unaddressed knowledge gaps detected! All reported incidents have matching SOP coverage.</span>
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {knowledgeGaps.map((gap) => (
+                  <div
+                    key={gap.conversationId}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-amber-500/20 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                        {gap.category || 'General IT'}
+                      </span>
+                      {gap.escalatedTicketNumber && (
+                        <span className="font-mono text-[11px] font-bold text-slate-400">
+                          Ticket {gap.escalatedTicketNumber}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-2">
+                      "{gap.query}"
+                    </p>
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400">
+                        {gap.occurredAt ? new Date(gap.occurredAt).toLocaleDateString() : 'Recent'}
+                      </span>
+                      <button
+                        onClick={() => handleIngestForGap(gap)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 transition-all"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Create SOP for This</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

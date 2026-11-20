@@ -2,20 +2,28 @@ package com.intellidesk.controller;
 
 import com.intellidesk.dto.admin.UpdateUserRoleRequest;
 import com.intellidesk.dto.admin.UserManagementResponse;
+import com.intellidesk.dto.knowledge.KnowledgeGapResponse;
+import com.intellidesk.entity.AiConversation;
 import com.intellidesk.entity.Role;
+import com.intellidesk.entity.Ticket;
 import com.intellidesk.entity.User;
 import com.intellidesk.entity.enums.RoleName;
 import com.intellidesk.exception.BadRequestException;
 import com.intellidesk.exception.ResourceNotFoundException;
+import com.intellidesk.repository.AiConversationRepository;
 import com.intellidesk.repository.RoleRepository;
+import com.intellidesk.repository.TicketRepository;
 import com.intellidesk.repository.UserRepository;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,10 +34,19 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final AiConversationRepository conversationRepository;
+    private final TicketRepository ticketRepository;
 
-    public AdminController(UserRepository userRepository, RoleRepository roleRepository) {
+    public AdminController(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            AiConversationRepository conversationRepository,
+            TicketRepository ticketRepository
+    ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.conversationRepository = conversationRepository;
+        this.ticketRepository = ticketRepository;
     }
 
     @GetMapping("/users")
@@ -79,5 +96,33 @@ public class AdminController {
         user.setActive(!user.isActive());
         User savedUser = userRepository.save(user);
         return ResponseEntity.ok(UserManagementResponse.fromEntity(savedUser));
+    }
+
+    /**
+     * Detect queries that failed self-service or lacked matching corporate SOPs,
+     * highlighting knowledge gaps for IT governance.
+     */
+    @GetMapping("/knowledge-gaps")
+    public ResponseEntity<List<KnowledgeGapResponse>> getKnowledgeGaps(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Page<AiConversation> gapPage = conversationRepository.findByKnowledgeGapTrueOrderByStartedAtDesc(PageRequest.of(page, size));
+        List<KnowledgeGapResponse> list = gapPage.getContent().stream()
+                .map(c -> {
+                    Optional<Ticket> t = ticketRepository.findBySourceConversationId(c.getId());
+                    return new KnowledgeGapResponse(
+                            c.getId(),
+                            c.getSessionId(),
+                            c.getInitialQuery(),
+                            c.getIdentifiedCategory(),
+                            c.getStartedAt(),
+                            c.getStatus().name(),
+                            t.map(Ticket::getTicketNumber).orElse(null),
+                            "Draft SOP for category [" + c.getIdentifiedCategory() + "] regarding: " + c.getInitialQuery()
+                    );
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
     }
 }

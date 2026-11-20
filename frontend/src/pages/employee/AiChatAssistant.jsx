@@ -313,8 +313,9 @@ export default function AiChatAssistant() {
       });
 
       setSessionStatus('ESCALATED');
-      if (response.ticketNumber) {
-        setEscalatedTicketInfo({ ticketNumber: response.ticketNumber });
+      const ticketNum = response.escalatedTicketNumber || response.ticketNumber;
+      if (ticketNum) {
+        setEscalatedTicketInfo({ ticketNumber: ticketNum });
       }
 
       if (response.reply) {
@@ -329,6 +330,14 @@ export default function AiChatAssistant() {
 
       setIsEscalateModalOpen(false);
       loadRecentSessions();
+
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 60,
+          spread: 60,
+          origin: { y: 0.5 }
+        });
+      }
     } catch (err) {
       console.error('Error escalating session:', err);
     } finally {

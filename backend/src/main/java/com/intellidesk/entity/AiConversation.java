@@ -35,6 +35,9 @@ public class AiConversation {
     @Column(name = "ended_at")
     private Instant endedAt;
 
+    @Column(name = "knowledge_gap")
+    private Boolean knowledgeGap = false;
+
     public AiConversation() {}
 
     public AiConversation(String sessionId, User user, String initialQuery) {
@@ -106,5 +109,13 @@ public class AiConversation {
 
     public void setEndedAt(Instant endedAt) {
         this.endedAt = endedAt;
+    }
+
+    public Boolean getKnowledgeGap() {
+        return knowledgeGap != null ? knowledgeGap : false;
+    }
+
+    public void setKnowledgeGap(Boolean knowledgeGap) {
+        this.knowledgeGap = knowledgeGap;
     }
 }

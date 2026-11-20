@@ -23,8 +23,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -262,34 +264,33 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         List<AiMessage> messages = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
         List<TroubleshootingStep> steps = stepRepository.findByConversationIdOrderByStepNumberAsc(conversation.getId());
 
-        // Synthesize AI Summary
-        String aiSummary = synthesizeEscalationSummary(conversation, messages, steps, request.getAdditionalNotes());
+        // Synthesize AI Diagnostic Handover Package via Gemini LLM
+        DiagnosticHandoverDto handover = generateAiHandoverPackage(conversation, messages, steps, request.getAdditionalNotes());
 
-        // Match Category
-        TicketCategory category = matchTicketCategory(conversation.getIdentifiedCategory());
+        // Match Category (respect LLM recommended category if valid)
+        String categoryName = (handover.getSuggestedCategory() != null && !handover.getSuggestedCategory().isBlank())
+                ? handover.getSuggestedCategory() : conversation.getIdentifiedCategory();
+        TicketCategory category = matchTicketCategory(categoryName);
 
-        // Determine Priority
-        TicketPriority priority = calculatePriority(conversation.getInitialQuery(), request.getPriority());
+        // Determine Priority (respect user preference or AI suggested priority or keyword fallback)
+        String priorityCandidate = (request.getPriority() != null && !request.getPriority().isBlank())
+                ? request.getPriority() : handover.getSuggestedPriority();
+        TicketPriority priority = calculatePriority(conversation.getInitialQuery(), priorityCandidate);
+        if (priority == null) {
+            priority = TicketPriority.MEDIUM;
+        }
 
         // Create Ticket
         String ticketNumber = TicketNumberGenerator.generateTicketNumber();
         String title = truncateTitle(conversation.getInitialQuery());
 
         StringBuilder fullDescription = new StringBuilder();
-        fullDescription.append("=== AUTOMATIC ESCALATION FROM AI SUPPORT ASSISTANT ===\n\n");
-        fullDescription.append("User Initial Issue:\n").append(conversation.getInitialQuery()).append("\n\n");
+        fullDescription.append("### 📋 Executive Summary\n").append(handover.getExecutiveSummary()).append("\n\n");
+        fullDescription.append("### 💡 Root Cause Hypothesis\n").append(handover.getRootCauseHypothesis()).append("\n\n");
+        fullDescription.append("### 🔍 Attempted Diagnostics & User Feedback\n").append(handover.getAttemptedDiagnostics()).append("\n\n");
+        fullDescription.append("### 🛠️ Recommended Actions for Tier-2 Support Engineer\n").append(handover.getRecommendedTier2Actions()).append("\n\n");
         if (request.getAdditionalNotes() != null && !request.getAdditionalNotes().isBlank()) {
-            fullDescription.append("User Notes at Escalation:\n").append(request.getAdditionalNotes().trim()).append("\n\n");
-        }
-        fullDescription.append("AI Diagnostic Summary:\n").append(aiSummary).append("\n\n");
-        fullDescription.append("Attempted Diagnostic Steps:\n");
-        for (TroubleshootingStep step : steps) {
-            fullDescription.append("- Step ").append(step.getStepNumber()).append(": ")
-                    .append(step.getStepTitle()).append(" [Status: ").append(step.getStatus()).append("]");
-            if (step.getUserFeedback() != null) {
-                fullDescription.append(" - Feedback: ").append(step.getUserFeedback());
-            }
-            fullDescription.append("\n");
+            fullDescription.append("**Employee Notes at Escalation:** ").append(request.getAdditionalNotes().trim()).append("\n\n");
         }
 
         Ticket ticket = new Ticket();
@@ -298,10 +299,12 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         ticket.setDescription(fullDescription.toString());
         ticket.setRequester(user);
         ticket.setCategory(category);
-        ticket.setPriority(priority != null ? priority : TicketPriority.MEDIUM);
+        ticket.setPriority(priority);
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setSourceConversation(conversation);
-        ticket.setAiSummary(aiSummary);
+        ticket.setAiSummary(handover.getExecutiveSummary());
+        ticket.setRootCause(handover.getRootCauseHypothesis());
+        ticket.setSlaDeadline(calculateSlaDeadline(priority));
         ticket = ticketRepository.save(ticket);
 
         // Record Ticket History
@@ -315,15 +318,19 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         );
         historyRepository.save(history);
 
-        // Mark Conversation as Escalated
+        // Mark Conversation as Escalated and detect Knowledge Gap
         conversation.setStatus(ConversationStatus.ESCALATED);
         conversation.setEndedAt(Instant.now());
+        boolean hadCitations = messages.stream().anyMatch(m -> m.getContextCitations() != null && !m.getContextCitations().isBlank());
+        if (!hadCitations) {
+            conversation.setKnowledgeGap(true);
+        }
         conversationRepository.save(conversation);
 
-        // Add confirmation message to chat
+        // Add confirmation message to chat with SLA window
         String escalationNotice = "Support Ticket **" + ticket.getTicketNumber() + "** has been created and assigned to the " +
                 (category != null ? category.getName() : "IT Support") + " team with priority **" + priority.name() +
-                "**. An IT engineer will review your diagnostic transcript and follow up shortly.";
+                "** (Resolution SLA: " + formatSlaWindow(priority) + "). An IT support engineer has been dispatched with your full AI Diagnostic Handover.";
 
         AiMessage noticeMsg = new AiMessage(conversation, SenderType.ASSISTANT, escalationNotice);
         messageRepository.save(noticeMsg);
@@ -594,27 +601,137 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         return list;
     }
 
-    private String synthesizeEscalationSummary(
+    private DiagnosticHandoverDto generateAiHandoverPackage(
             AiConversation conversation,
             List<AiMessage> messages,
             List<TroubleshootingStep> steps,
             String userNotes
     ) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Initial Reported Issue: ").append(conversation.getInitialQuery()).append(". ");
-        sb.append("Category: ").append(conversation.getIdentifiedCategory()).append(". ");
+        ChatClient chatClient = chatClientProvider.getIfAvailable();
+        if (chatClient != null) {
+            try {
+                StringBuilder prompt = new StringBuilder();
+                prompt.append("You are an expert Enterprise IT Incident Response Specialist. An enterprise employee attempted self-service troubleshooting, but the issue was not resolved and is now being escalated to human Tier-2 IT support.\n\n");
+                prompt.append("Analyze the diagnostic context below and synthesize a high-value, structured Technical Handover Package in strict JSON format.\n\n");
+                prompt.append("Incident Initial Query: ").append(conversation.getInitialQuery()).append("\n");
+                prompt.append("Identified Category: ").append(conversation.getIdentifiedCategory()).append("\n\n");
 
-        long failedSteps = steps.stream().filter(s -> s.getStatus() == StepStatus.FAILED).count();
-        if (failedSteps > 0) {
-            sb.append(failedSteps).append(" automated diagnostic step(s) were attempted and failed. ");
+                if (userNotes != null && !userNotes.isBlank()) {
+                    prompt.append("User Escalation Notes: ").append(userNotes.trim()).append("\n\n");
+                }
+
+                prompt.append("Attempted Diagnostic Steps:\n");
+                for (TroubleshootingStep step : steps) {
+                    prompt.append("- Step #").append(step.getStepNumber()).append(": ").append(step.getStepTitle())
+                            .append(" [Status: ").append(step.getStatus()).append("]");
+                    if (step.getUserFeedback() != null && !step.getUserFeedback().isBlank()) {
+                        prompt.append(" | Feedback: ").append(step.getUserFeedback());
+                    }
+                    prompt.append("\n");
+                }
+
+                prompt.append("\nConversation Transcript:\n");
+                for (AiMessage msg : messages) {
+                    prompt.append(msg.getSenderType()).append(": ").append(msg.getContent()).append("\n");
+                }
+
+                prompt.append("\nRespond with ONLY valid JSON with no markdown fences, matching this schema:\n");
+                prompt.append("{\n");
+                prompt.append("  \"executiveSummary\": \"1-2 concise sentences summarizing the core issue and employee impact\",\n");
+                prompt.append("  \"rootCauseHypothesis\": \"Likely technical root cause based on symptoms and failed steps\",\n");
+                prompt.append("  \"attemptedDiagnostics\": \"Bulleted summary of steps attempted and observed errors\",\n");
+                prompt.append("  \"recommendedTier2Actions\": \"Specific, concrete instructions for the IT engineer (do not repeat basic steps)\",\n");
+                prompt.append("  \"suggestedPriority\": \"CRITICAL, HIGH, MEDIUM, or LOW\",\n");
+                prompt.append("  \"suggestedCategory\": \"Exact category name\"\n");
+                prompt.append("}");
+
+                String jsonReply = chatClient.prompt().user(prompt.toString()).call().content();
+                if (jsonReply != null && !jsonReply.isBlank()) {
+                    DiagnosticHandoverDto parsed = parseHandoverJson(jsonReply);
+                    if (parsed != null) {
+                        return parsed;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Gemini handover synthesis failed; using heuristic handover fallback: {}", e.getMessage());
+            }
+        }
+        return buildHeuristicHandover(conversation, messages, steps, userNotes);
+    }
+
+    private DiagnosticHandoverDto parseHandoverJson(String rawJson) {
+        try {
+            String cleanJson = rawJson.trim();
+            if (cleanJson.startsWith("```")) {
+                int firstLf = cleanJson.indexOf("\n");
+                int lastBacktick = cleanJson.lastIndexOf("```");
+                if (firstLf != -1 && lastBacktick > firstLf) {
+                    cleanJson = cleanJson.substring(firstLf + 1, lastBacktick).trim();
+                }
+            }
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(cleanJson, DiagnosticHandoverDto.class);
+        } catch (Exception e) {
+            log.warn("Failed to parse Gemini handover JSON: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private DiagnosticHandoverDto buildHeuristicHandover(
+            AiConversation conversation,
+            List<AiMessage> messages,
+            List<TroubleshootingStep> steps,
+            String userNotes
+    ) {
+        String execSummary = "Employee reported: \"" + conversation.getInitialQuery() + "\" in domain [" +
+                conversation.getIdentifiedCategory() + "]. Self-service diagnostic steps failed to clear the issue.";
+
+        StringBuilder attempted = new StringBuilder();
+        if (steps.isEmpty()) {
+            attempted.append("No automated diagnostic step was executed before escalation.");
+        } else {
+            for (TroubleshootingStep step : steps) {
+                attempted.append("• Step #").append(step.getStepNumber()).append(" (").append(step.getStepTitle()).append("): ")
+                        .append(step.getStatus());
+                if (step.getUserFeedback() != null && !step.getUserFeedback().isBlank()) {
+                    attempted.append(" - Feedback: \"").append(step.getUserFeedback()).append("\"");
+                }
+                attempted.append("\n");
+            }
         }
 
-        if (userNotes != null && !userNotes.isBlank()) {
-            sb.append("User note: \"").append(userNotes.trim()).append("\". ");
-        }
+        String rootCause = "Self-service resolution unsuccessful; requires tier-2 infrastructure verification, administrative permission, or hardware dispatch.";
+        String recAction = "Review user notes, check service logs for " + conversation.getIdentifiedCategory() + ", and contact employee for remote assistance.";
 
-        sb.append("Self-service resolution could not clear the issue; routed to Tier-2 support for human investigation.");
-        return sb.toString();
+        return new DiagnosticHandoverDto(
+                execSummary,
+                rootCause,
+                attempted.toString().trim(),
+                recAction,
+                "MEDIUM",
+                conversation.getIdentifiedCategory()
+        );
+    }
+
+    private Instant calculateSlaDeadline(TicketPriority priority) {
+        Instant now = Instant.now();
+        if (priority == null) return now.plus(24, ChronoUnit.HOURS);
+        return switch (priority) {
+            case CRITICAL -> now.plus(2, ChronoUnit.HOURS);
+            case HIGH -> now.plus(4, ChronoUnit.HOURS);
+            case MEDIUM -> now.plus(24, ChronoUnit.HOURS);
+            case LOW -> now.plus(48, ChronoUnit.HOURS);
+        };
+    }
+
+    private String formatSlaWindow(TicketPriority priority) {
+        if (priority == null) return "24 Hours";
+        return switch (priority) {
+            case CRITICAL -> "2 Hours";
+            case HIGH -> "4 Hours";
+            case MEDIUM -> "24 Hours";
+            case LOW -> "48 Hours";
+        };
     }
 
     private TicketCategory matchTicketCategory(String domain) {

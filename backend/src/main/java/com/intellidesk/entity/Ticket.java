@@ -64,6 +64,9 @@ public class Ticket {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
+    @Column(name = "sla_deadline")
+    private Instant slaDeadline;
+
     public Ticket() {}
 
     @PreUpdate
@@ -197,5 +200,13 @@ public class Ticket {
 
     public void setResolvedAt(Instant resolvedAt) {
         this.resolvedAt = resolvedAt;
+    }
+
+    public Instant getSlaDeadline() {
+        return slaDeadline;
+    }
+
+    public void setSlaDeadline(Instant slaDeadline) {
+        this.slaDeadline = slaDeadline;
     }
 }
