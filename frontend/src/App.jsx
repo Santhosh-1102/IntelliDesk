@@ -44,10 +44,50 @@ export default function App() {
               }
             />
             <Route
+              path="/engineer/chat"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <AiChatAssistant />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <AiChatAssistant />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assistant"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <AiChatAssistant />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/employee/tickets"
               element={
                 <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
                   <EmployeeDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tickets"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <EngineerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/engineer/tickets"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <EngineerDashboard />
                 </ProtectedRoute>
               }
             />
