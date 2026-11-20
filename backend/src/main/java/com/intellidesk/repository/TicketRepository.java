@@ -18,6 +18,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Optional<Ticket> findByTicketNumber(String ticketNumber);
 
+    Optional<Ticket> findBySourceConversationId(Long sourceConversationId);
+
     Page<Ticket> findByRequesterId(Long requesterId, Pageable pageable);
 
     Page<Ticket> findByAssignedEngineerId(Long engineerId, Pageable pageable);

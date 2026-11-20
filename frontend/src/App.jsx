@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
+import AiChatAssistant from './pages/employee/AiChatAssistant';
 import EngineerDashboard from './pages/engineer/EngineerDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -30,6 +31,14 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
                   <EmployeeDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/chat"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_EMPLOYEE', 'ROLE_SUPPORT_ENGINEER', 'ROLE_ADMIN']}>
+                  <AiChatAssistant />
                 </ProtectedRoute>
               }
             />

@@ -7,6 +7,7 @@
     "esbenp.prettier-vscode",
     "rangav.vscode-thunder-client",
     "ms-python.python",
-    "ms-python.vscode-pylance"
+    "ms-python.vscode-pylance",
+    "google.google-antigravity"
   ]
 }
