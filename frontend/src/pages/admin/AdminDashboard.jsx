@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <Link
-                    to="/tickets"
+                    to="/admin/queue"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-500 transition-colors"
                   >
                     <span>View all active tickets</span>
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3 px-3 text-right">
                               <Link
-                                to={`/tickets`}
+                                to="/admin/queue"
                                 className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white text-slate-700 dark:text-slate-300 font-bold text-[11px] transition-all inline-block"
                               >
                                 Review

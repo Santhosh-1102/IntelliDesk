@@ -117,7 +117,7 @@ export default function Sidebar() {
                   RAG
                 </span>
               </NavLink>
-              <NavLink to="/engineer" end className={navClass}>
+              <NavLink to="/admin/queue" className={navClass}>
                 <div className="flex items-center gap-3">
                   <Inbox className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-violet-500 transition-colors" />
                   <span>Support Queue</span>

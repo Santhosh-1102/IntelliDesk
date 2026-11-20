@@ -118,6 +118,22 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/queue"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_SUPPORT_ENGINEER']}>
+                  <EngineerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/tickets"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_SUPPORT_ENGINEER']}>
+                  <EngineerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/users"
               element={
                 <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
