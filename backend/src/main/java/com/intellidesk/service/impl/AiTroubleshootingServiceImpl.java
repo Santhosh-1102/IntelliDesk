@@ -123,11 +123,6 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             stepDtos.add(mapStepToDto(stepEntity, rawStep.command()));
         }
 
-        // Also add previously existing pending steps
-        for (TroubleshootingStep prevStep : existingSteps) {
-            stepDtos.add(mapStepToDto(prevStep, null));
-        }
-
         // Update conversation
         conversationRepository.save(conversation);
 
@@ -389,7 +384,19 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
     private String classifyDomain(String initialQuery, String latestMessage) {
         String text = (initialQuery + " " + latestMessage).toLowerCase();
 
-        if (text.contains("vpn") || text.contains("wifi") || text.contains("wi-fi") || text.contains("network") || text.contains("dns") || text.contains("ipsec") || text.contains("gateway")) {
+        if (text.contains("cursor") || text.contains("mouse") || text.contains("touchpad") || text.contains("trackpad") || text.contains("pointer")) {
+            return "Peripherals & Input Devices";
+        }
+        if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic")) {
+            return "Audio & Multimedia";
+        }
+        if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness")) {
+            return "Display & Monitors";
+        }
+        if (text.contains("bluetooth") || text.contains("bt ")) {
+            return "Bluetooth & Wireless Devices";
+        }
+        if (text.contains("wifi") || text.contains("wi-fi") || text.contains("wlan") || text.contains("vpn") || text.contains("network") || text.contains("dns") || text.contains("ipsec") || text.contains("gateway") || text.contains("internet")) {
             return "Network & Connectivity";
         }
         if (text.contains("outlook") || text.contains("email") || text.contains("teams") || text.contains("office") || text.contains("excel") || text.contains("word") || text.contains("0x8004")) {
@@ -398,7 +405,10 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         if (text.contains("docker") || text.contains("git") || text.contains("wsl") || text.contains("daemon") || text.contains("kubernetes") || text.contains("npm") || text.contains("maven")) {
             return "Developer Tools";
         }
-        if (text.contains("bitlocker") || text.contains("tpm") || text.contains("screen") || text.contains("battery") || text.contains("monitor") || text.contains("keyboard") || text.contains("laptop") || text.contains("hardware")) {
+        if (text.contains("bitlocker") || text.contains("tpm") || text.contains("recovery key")) {
+            return "Security & Encryption";
+        }
+        if (text.contains("battery") || text.contains("charger") || text.contains("keyboard") || text.contains("hardware") || text.contains("fan") || text.contains("heat")) {
             return "Hardware & Workstations";
         }
         if (text.contains("password") || text.contains("mfa") || text.contains("okta") || text.contains("login") || text.contains("access") || text.contains("permission") || text.contains("sso")) {
@@ -454,19 +464,127 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             String userMessage,
             List<TroubleshootingStep> existingSteps
     ) {
-        String query = conversation.getInitialQuery().toLowerCase();
-        String current = userMessage.toLowerCase();
-        String domain = conversation.getIdentifiedCategory();
-
+        String text = (conversation.getInitialQuery() + " " + userMessage).toLowerCase();
         List<RawDiagnosticStep> newSteps = new ArrayList<>();
         String reply;
         String citation;
 
-        if (domain.equals("Network & Connectivity")) {
+        // 1. Cursor / Touchpad / Mouse Issues
+        if (text.contains("cursor") || text.contains("touchpad") || text.contains("trackpad") || text.contains("mouse") || text.contains("pointer")) {
+            citation = "SOP-HW-012: Laptop Touchpad & Pointer Troubleshooting Guide.pdf";
+            reply = "I've analyzed your input hardware symptoms. A missing or unresponsive cursor on a laptop is typically caused by an accidental Fn touchpad hardware lock, an inverted Windows gesture toggle, or a suspended I2C/HID pointer driver. Let's resolve this step-by-step:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Toggle Laptop Touchpad Function Lock (Fn Key)",
+                    "Most enterprise laptops (Dell, Lenovo, HP, Asus) have a physical touchpad toggle. Try pressing Fn + F6, Fn + F7, Fn + F9, or Fn + F10 (look for the trackpad icon with a slash), or double-tap the top-left corner of the trackpad to re-enable it.",
+                    "main.cpl"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Restart Mouse & Pointer Hardware Driver (HID)",
+                    "Scan the hardware bus and restart the pointing device driver in Windows Device Manager.",
+                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue"
+            ));
+        }
+        // 2. Wi-Fi Missing / Disabled / Adapter Gone
+        else if ((text.contains("wifi") || text.contains("wi-fi") || text.contains("wlan")) && 
+                 (text.contains("gone") || text.contains("missing") || text.contains("not there") || text.contains("no wifi") || text.contains("disabled") || text.contains("disappeared"))) {
+            citation = "SOP-NET-008: Windows WLAN Adapter & Service Recovery.pdf";
+            reply = "I've diagnosed your wireless network issue. When the Wi-Fi icon or toggle disappears completely from Windows, the network adapter is usually software-disabled, stuck in Airplane Mode, or the Windows WLAN AutoConfig service has stopped. Let's restore your Wi-Fi interface:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Force Enable Wi-Fi Adapter & Clear Adapter Disable",
+                    "Execute the command below in PowerShell to re-enable all wireless network adapters and clear administrative blocks.",
+                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false -ErrorAction SilentlyContinue"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Restart Windows WLAN AutoConfig Service (WlanSvc)",
+                    "WlanSvc manages wireless discovery and network card enumeration. Restarting it restores the Wi-Fi tray icon and available networks list.",
+                    "Restart-Service -Name WlanSvc -Force ; netsh winsock reset"
+            ));
+        }
+        // 3. Audio / Sound / Microphone Issues
+        else if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic") || text.contains("volume")) {
+            citation = "SOP-HW-015: Windows Audio Service & Endpoint Diagnostics.pdf";
+            reply = "I've evaluated your audio hardware prompt. Missing audio outputs or microphone dropouts typically occur when the Windows Audio Endpoint Builder hangs. Let's restart the audio engine:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Restart Core Windows Audio Services",
+                    "Restarts AudioSrv and AudioEndpointBuilder to reload all playback and recording streams without requiring a computer reboot.",
+                    "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Rescan and Enumerate Audio Hardware Devices",
+                    "Forces Windows Plug-and-Play manager to re-detect connected 3.5mm jacks, USB headsets, and Bluetooth devices.",
+                    "pnputil /scan-devices"
+            ));
+        }
+        // 4. Display / Screen / External Monitor / HDMI
+        else if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness") || text.contains("second monitor")) {
+            citation = "SOP-HW-007: Multi-Display & GPU Driver Recovery.pdf";
+            reply = "I've analyzed your display issue. Screen blackouts, detection failures, or second monitor freezes are usually resolved by restarting the display driver pipeline:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Trigger Windows GPU Driver Reset",
+                    "Press Win + Ctrl + Shift + B on your keyboard (the screen will briefly flicker and beep). Then execute the projection command below to extend your desktop.",
+                    "displayswitch.exe /extend"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Re-Detect Connected Displays & Refresh Resolution",
+                    "Force Windows WMI to query attached monitors and update EDID timings.",
+                    "Get-WmiObject -Namespace root\\wmi -Class WmiMonitorID"
+            ));
+        }
+        // 5. Bluetooth Issues
+        else if (text.contains("bluetooth") || text.contains("bt ")) {
+            citation = "SOP-HW-019: Windows Bluetooth Stack Recovery.pdf";
+            reply = "I've analyzed your Bluetooth connection issue. Let's restart the Bluetooth Discovery & Support service:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Restart Bluetooth Support Service (bthserv)",
+                    "Restarts the Windows Bluetooth background engine and clears stuck peripheral pairing caches.",
+                    "Restart-Service -Name bthserv -Force"
+            ));
+        }
+        // 6. Docker Desktop & Container Engines
+        else if (text.contains("docker") || text.contains("wsl") || text.contains("container")) {
+            citation = "SOP-DEV-022: Windows Docker Desktop & WSL2 Permissions.pdf";
+            reply = "I've diagnosed your Docker environment fault. This typically happens when non-elevated terminals lack ACL socket permissions or the WSL2 kernel is stopped:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Grant User ACL on Docker Config & Named Pipe",
+                    "Grants your user full access permissions to Docker CLI configs and communication pipes.",
+                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\""
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Restart WSL2 Subsystem Engine",
+                    "Gracefully terminates and re-initializes the WSL2 Linux kernel supporting the Docker runtime.",
+                    "wsl --shutdown"
+            ));
+        }
+        // 7. Git / SSH / Version Control Access
+        else if (text.contains("git") || text.contains("ssh") || text.contains("publickey") || text.contains("push rejected")) {
+            citation = "SOP-DEV-018: Enterprise Git & SSH Key Configuration.pdf";
+            reply = "I've analyzed your version control access error. 'Permission denied (publickey)' indicates the SSH agent cannot find a matching private key or the public key has not been added to your GitHub/GitLab account:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Test SSH Handshake with GitHub",
+                    "Test whether your local SSH agent can establish a secure handshake with the remote repository.",
+                    "ssh -vT git@github.com"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Display Your Local SSH Public Key to Add to Account",
+                    "Copy your public key output below, go to your GitHub/GitLab Settings > SSH Keys, and paste it.",
+                    "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\", \"$env:USERPROFILE\\.ssh\\id_rsa.pub\" -ErrorAction SilentlyContinue"
+            ));
+        }
+        // 8. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
+        else if (text.contains("bitlocker") || text.contains("tpm") || text.contains("recovery key")) {
+            citation = "SOP-SEC-003: Azure AD Intune BitLocker & TPM Diagnostics.pdf";
+            reply = "I've evaluated your BitLocker recovery request against our Azure AD device management SOP. You can retrieve your 48-digit recovery key securely through Microsoft Intune:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Retrieve BitLocker Key from Corporate Device Portal",
+                    "Open https://myaccount.microsoft.com/device-list in a browser (or phone), locate your laptop name, and click 'View BitLocker Keys'.",
+                    "Get-BitLockerVolume -MountPoint 'C:'"
+            ));
+        }
+        // 9. VPN & General Network Connectivity
+        else if (text.contains("vpn") || text.contains("network") || text.contains("globalprotect") || text.contains("disconnect") || text.contains("wifi") || text.contains("wi-fi")) {
             citation = "SOP-NET-014: Corporate VPN & Remote Access Protocol.pdf (Section 3.2)";
             if (existingSteps.isEmpty()) {
-                reply = "I've analyzed your network connectivity issue against our Palo Alto GlobalProtect and Wi-Fi SOPs. " +
-                        "Frequent drops on home Wi-Fi typically occur when carrier UDP keepalives expire or MTU packets fragment. Let's start with non-destructive network reconfiguration:";
+                reply = "I've analyzed your network connectivity issue against our Palo Alto GlobalProtect and Wi-Fi SOPs. Frequent drops on home Wi-Fi typically occur when carrier UDP keepalives expire or MTU packets fragment. Let's start with non-destructive network reconfiguration:";
                 newSteps.add(new RawDiagnosticStep(
                         "Force SSL Tunnel Encapsulation (TCP 443)",
                         "Open GlobalProtect Settings > Troubleshooting > Toggle 'Prefer SSL Tunnel over IPsec'. Alternatively execute the command below in PowerShell.",
@@ -485,11 +603,12 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         "ping -f -l 1472 8.8.8.8"
                 ));
             }
-        } else if (domain.equals("Application Software")) {
+        }
+        // 10. Outlook & Application Software
+        else if (text.contains("outlook") || text.contains("email") || text.contains("teams") || text.contains("office") || text.contains("excel") || text.contains("word") || text.contains("0x8004")) {
             citation = "SOP-APP-009: Microsoft 365 Outlook & Teams Diagnostic SOP.docx";
             if (existingSteps.isEmpty()) {
-                reply = "I've reviewed Microsoft 365 profile diagnostics for error code 0x8004010F. " +
-                        "This error is commonly triggered when the offline Outlook Data File (.ost) header becomes locked or the default profile store desynchronizes. Let's verify and repair your profile:";
+                reply = "I've reviewed Microsoft 365 profile diagnostics for error code 0x8004010F. This error is commonly triggered when the offline Outlook Data File (.ost) header becomes locked or the default profile store desynchronizes. Let's verify and repair your profile:";
                 newSteps.add(new RawDiagnosticStep(
                         "Clean Reminders & Rebuild Outlook Cache",
                         "Close Outlook and run the repair command to recreate the cached OST container safely.",
@@ -508,49 +627,34 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         "outlook.exe /safe"
                 ));
             }
-        } else if (domain.equals("Developer Tools")) {
-            citation = "SOP-DEV-022: Windows Docker Desktop & WSL2 Permissions.pdf";
-            if (existingSteps.isEmpty()) {
-                reply = "I've identified a Docker Desktop daemon communication fault (EACCES on named pipe). " +
-                        "This happens when non-elevated terminal processes lack ACL permissions to the Docker named pipe or config directory. Let's fix the socket access:";
-                newSteps.add(new RawDiagnosticStep(
-                        "Grant User ACL on Docker Config & Named Pipe",
-                        "Run the permission grant command to grant your Windows user full access to Docker configurations.",
-                        "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\""
-                ));
-                newSteps.add(new RawDiagnosticStep(
-                        "Restart Docker Desktop Service Engine",
-                        "Restart the local Docker Windows service to re-initialize named pipe listeners.",
-                        "Restart-Service *docker* -ErrorAction SilentlyContinue"
-                ));
-            } else {
-                reply = "If the named pipe remains unreachable, let's verify WSL2 distribution status and restart the backend subsystem:";
-                newSteps.add(new RawDiagnosticStep(
-                        "Restart WSL2 Subsystem",
-                        "Terminate and restart all WSL2 instances supporting the Docker container runtime.",
-                        "wsl --shutdown"
-                ));
-            }
-        } else if (domain.equals("Hardware & Workstations")) {
-            citation = "SOP-SEC-003: Azure AD Intune BitLocker & TPM Diagnostics.pdf";
-            reply = "I've evaluated your hardware security prompt against our Azure AD BitLocker recovery SOP. " +
-                    "TPM PCR registers are typically reset following a UEFI firmware or BIOS update. You can retrieve your 48-digit recovery key directly via Intune:";
+        }
+        // 11. System Sluggishness & High Resource Usage
+        else if (text.contains("slow") || text.contains("freeze") || text.contains("high cpu") || text.contains("ram") || text.contains("memory") || text.contains("hang")) {
+            citation = "SOP-SYS-004: Windows Performance Optimization & Diagnostics.pdf";
+            reply = "Let's identify what is causing your system slowdown:";
             newSteps.add(new RawDiagnosticStep(
-                    "Retrieve BitLocker Key from Corporate Device Portal",
-                    "Navigate to https://myaccount.microsoft.com/device-list in your phone browser, select your laptop, and click 'View BitLocker Keys'.",
-                    "Get-BitLockerVolume -MountPoint 'C:'"
-            ));
-        } else {
-            citation = "SOP-GEN-001: General Enterprise IT Diagnostic Standard.pdf";
-            reply = "I've reviewed your request. To help diagnose and resolve this quickly, let's perform standard IT baseline diagnostics:";
-            newSteps.add(new RawDiagnosticStep(
-                    "Check Background Processes & Resource Bottlenecks",
-                    "Query the active Windows processes with high CPU or memory consumption.",
+                    "Identify High-Resource Processes",
+                    "Lists the top processes currently consuming CPU and memory.",
                     "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, CPU, WorkingSet64"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Verify Network Endpoint Health",
-                    "Confirm connectivity to corporate identity and gateway servers.",
+                    "Scan System Integrity (SFC Scan)",
+                    "Scans Windows system files for corruption and repairs missing binaries.",
+                    "sfc /scannow"
+            ));
+        }
+        // 12. General Technical Inquiry (Fallback)
+        else {
+            citation = "SOP-GEN-001: General Enterprise IT Diagnostic Standard.pdf";
+            reply = "I've reviewed your request. To help identify the root cause quickly, let's run standard baseline diagnostics:";
+            newSteps.add(new RawDiagnosticStep(
+                    "Inspect Recent System Error Events",
+                    "Queries the Windows Event Log for recent critical hardware, service, or driver failures.",
+                    "Get-EventLog -LogName System -EntryType Error -Newest 5"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Verify Corporate Gateway Connectivity",
+                    "Confirms network connectivity and DNS resolution.",
                     "Test-NetConnection -ComputerName '1.1.1.1' -Port 53"
             ));
         }

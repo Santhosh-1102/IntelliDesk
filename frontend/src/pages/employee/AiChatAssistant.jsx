@@ -124,16 +124,20 @@ export default function AiChatAssistant() {
       );
 
       // Map backend messages into view model
-      const mapped = (details.messages || []).map((m) => ({
-        id: m.id || Math.random(),
-        sender: m.senderType,
-        content: m.content,
-        timestamp: m.createdAt,
-        diagnosticSteps:
-          m.senderType === 'ASSISTANT' && details.diagnosticSteps
-            ? details.diagnosticSteps
-            : []
-      }));
+      const allSteps = details.steps || details.diagnosticSteps || [];
+      const mapped = (details.messages || []).map((m, idx, arr) => {
+        // Only attach all steps to the most recent assistant message to prevent duplicate past cards
+        const isLastAssistant =
+          m.senderType === 'ASSISTANT' &&
+          !arr.slice(idx + 1).some((next) => next.senderType === 'ASSISTANT');
+        return {
+          id: m.id || Math.random(),
+          sender: m.senderType,
+          content: m.content,
+          timestamp: m.createdAt,
+          diagnosticSteps: isLastAssistant ? allSteps : []
+        };
+      });
       setMessages(mapped);
     } catch (err) {
       console.error('Error loading session details:', err);
