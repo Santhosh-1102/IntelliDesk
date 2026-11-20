@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,10 +37,28 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     long countByAssignedEngineerId(Long engineerId);
 
-    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.assignedEngineer.id = :engineerId AND t.status IN ('ASSIGNED', 'IN_PROGRESS')")
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.assignedEngineer.id = :engineerId AND t.status NOT IN ('RESOLVED', 'CLOSED')")
     long countActiveTicketsForEngineer(@Param("engineerId") Long engineerId);
 
-    @Query("SELECT t.category.name, COUNT(t) FROM Ticket t GROUP BY t.category.name")
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.assignedEngineer.id = :engineerId AND t.status IN ('RESOLVED', 'CLOSED')")
+    long countResolvedTicketsForEngineer(@Param("engineerId") Long engineerId);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status NOT IN ('RESOLVED', 'CLOSED') AND t.slaDeadline IS NOT NULL AND t.slaDeadline < :now")
+    long countSlaBreachedTickets(@Param("now") Instant now);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.status NOT IN ('RESOLVED', 'CLOSED') AND t.slaDeadline IS NOT NULL AND t.slaDeadline >= :now AND t.slaDeadline <= :nearDeadline")
+    long countNearSlaBreachedTickets(@Param("now") Instant now, @Param("nearDeadline") Instant nearDeadline);
+
+    @Query("SELECT COUNT(t) FROM Ticket t WHERE t.slaDeadline IS NOT NULL")
+    long countSlaTrackedTickets();
+
+    @Query("SELECT t FROM Ticket t WHERE t.status NOT IN ('RESOLVED', 'CLOSED') AND t.slaDeadline IS NOT NULL ORDER BY t.slaDeadline ASC")
+    List<Ticket> findActiveTicketsBySlaUrgency(Pageable pageable);
+
+    @Query("SELECT t FROM Ticket t WHERE t.status IN ('RESOLVED', 'CLOSED') AND t.resolvedAt IS NOT NULL AND t.createdAt IS NOT NULL")
+    List<Ticket> findResolvedTicketsForMttr();
+
+    @Query("SELECT COALESCE(t.category.name, 'Uncategorized'), COUNT(t) FROM Ticket t GROUP BY t.category.name")
     List<Object[]> countTicketsByCategory();
 
     @Query("SELECT t.priority, COUNT(t) FROM Ticket t GROUP BY t.priority")

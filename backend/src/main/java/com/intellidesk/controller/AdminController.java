@@ -2,6 +2,8 @@ package com.intellidesk.controller;
 
 import com.intellidesk.dto.admin.UpdateUserRoleRequest;
 import com.intellidesk.dto.admin.UserManagementResponse;
+import com.intellidesk.dto.analytics.AdminAnalyticsResponse;
+import com.intellidesk.dto.analytics.SlaBreachTicketDto;
 import com.intellidesk.dto.knowledge.KnowledgeGapResponse;
 import com.intellidesk.entity.AiConversation;
 import com.intellidesk.entity.Role;
@@ -14,6 +16,7 @@ import com.intellidesk.repository.AiConversationRepository;
 import com.intellidesk.repository.RoleRepository;
 import com.intellidesk.repository.TicketRepository;
 import com.intellidesk.repository.UserRepository;
+import com.intellidesk.service.AnalyticsService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,17 +39,39 @@ public class AdminController {
     private final RoleRepository roleRepository;
     private final AiConversationRepository conversationRepository;
     private final TicketRepository ticketRepository;
+    private final AnalyticsService analyticsService;
 
     public AdminController(
             UserRepository userRepository,
             RoleRepository roleRepository,
             AiConversationRepository conversationRepository,
-            TicketRepository ticketRepository
+            TicketRepository ticketRepository,
+            AnalyticsService analyticsService
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.conversationRepository = conversationRepository;
         this.ticketRepository = ticketRepository;
+        this.analyticsService = analyticsService;
+    }
+
+    /**
+     * Real-time IT governance and executive BI analytics
+     */
+    @GetMapping("/analytics")
+    public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
+        return ResponseEntity.ok(analyticsService.getAdminAnalytics());
+    }
+
+    /**
+     * Real-time SLA breach radar and urgency tracker
+     */
+    @GetMapping("/analytics/sla-breaches")
+    public ResponseEntity<List<SlaBreachTicketDto>> getSlaBreaches(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(analyticsService.getSlaBreaches(page, size));
     }
 
     @GetMapping("/users")
