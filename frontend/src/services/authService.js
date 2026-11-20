@@ -19,6 +19,16 @@ export const authService = {
     return response.data;
   },
 
+  async sendOtp(phoneNumber) {
+    const response = await api.post('/auth/otp/send', { phoneNumber });
+    return response.data;
+  },
+
+  async verifyOtp(phoneNumber, code) {
+    const response = await api.post('/auth/otp/verify', { phoneNumber, code });
+    return response.data;
+  },
+
   async getCurrentUser() {
     const response = await api.get('/auth/me');
     return response.data;

@@ -31,6 +31,9 @@ public class User {
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
+    @Column(name = "phone_verified", nullable = false)
+    private boolean phoneVerified = false;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -118,6 +121,14 @@ public class User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public boolean isPhoneVerified() {
+        return phoneVerified;
+    }
+
+    public void setPhoneVerified(boolean phoneVerified) {
+        this.phoneVerified = phoneVerified;
     }
 
     public boolean isActive() {

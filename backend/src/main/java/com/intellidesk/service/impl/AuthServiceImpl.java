@@ -14,6 +14,7 @@ import com.intellidesk.repository.UserRepository;
 import com.intellidesk.security.JwtUtils;
 import com.intellidesk.security.UserDetailsImpl;
 import com.intellidesk.service.AuthService;
+import com.intellidesk.service.OtpService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -36,19 +37,22 @@ public class AuthServiceImpl implements AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final OtpService otpService;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            JwtUtils jwtUtils
+            JwtUtils jwtUtils,
+            OtpService otpService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
+        this.otpService = otpService;
     }
 
     @Override
@@ -97,9 +101,17 @@ public class AuthServiceImpl implements AuthService {
                 registerRequest.getDepartment() != null ? registerRequest.getDepartment().trim() : null
         );
 
-        if (registerRequest.getPhoneNumber() != null) {
-            user.setPhoneNumber(registerRequest.getPhoneNumber().trim());
+        // Enforce Phone Number + OTP Verification
+        if (registerRequest.getPhoneNumber() == null || registerRequest.getPhoneNumber().trim().isBlank()) {
+            throw new BadRequestException("Phone number is required. Please verify your mobile number via OTP before completing registration.");
         }
+        String rawPhone = registerRequest.getPhoneNumber().trim();
+        if (!otpService.isPhoneVerified(rawPhone)) {
+            throw new BadRequestException("Phone number " + rawPhone + " has not been verified via OTP. Please verify your phone number to complete registration.");
+        }
+        user.setPhoneNumber(rawPhone);
+        user.setPhoneVerified(true);
+        otpService.markPhoneAsConsumed(rawPhone);
 
         // Assign Role (Default to ROLE_EMPLOYEE unless specified and allowed)
         Set<Role> roles = new HashSet<>();
