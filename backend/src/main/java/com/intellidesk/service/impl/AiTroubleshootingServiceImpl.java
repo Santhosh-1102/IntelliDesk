@@ -390,7 +390,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic")) {
             return "Audio & Multimedia";
         }
-        if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness")) {
+        if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness") || text.contains("green line") || text.contains("line on screen")) {
             return "Display & Monitors";
         }
         if (text.contains("bluetooth") || text.contains("bt ")) {
@@ -443,7 +443,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         }
 
         // Resilient Technical Diagnostic Rule Engine
-        return generateRuleBasedPlan(conversation, userMessage, existingSteps);
+        return generateRuleBasedPlan(conversation, userMessage, history, existingSteps);
     }
 
     private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history) {
@@ -453,6 +453,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         sb.append("- Guide them step-by-step through Windows Settings (mentioning exact paths and toggles to check, e.g. 'Press Win + I > Settings > [Section] > verify toggle is ON').\n");
         sb.append("- Guide them through Device Manager (how to check, enable, or update the device driver via Win + X > Device Manager).\n");
         sb.append("- Guide them on how to open Google Chrome, visit their laptop manufacturer's driver website (Dell, HP, Lenovo), download the latest driver, and reinstall it.\n");
+        sb.append("- If the user reports green/pink lines on a laptop screen, recognize that this is almost always a physical hardware failure in the LCD panel or hinge flex cable. Teach them the 30-second BIOS test (tap F2/F12 on reboot) to confirm, and recommend converting to a support ticket for screen replacement.\n");
+        sb.append("- If the user mentions not having dedicated graphics, explain Integrated Graphics (Intel Iris Xe/UHD or AMD Radeon) built into the CPU, and re-emphasize the BIOS test.\n");
         sb.append("- Optionally provide a quick terminal/PowerShell command in a ```powershell code block for advanced users.\n\n");
         sb.append("Initial Problem: ").append(conversation.getInitialQuery()).append("\n");
         sb.append("Domain Category: ").append(conversation.getIdentifiedCategory()).append("\n\n");
@@ -468,15 +470,149 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
     private DiagnosticPlan generateRuleBasedPlan(
             AiConversation conversation,
             String userMessage,
+            List<AiMessage> history,
             List<TroubleshootingStep> existingSteps
     ) {
-        String text = (conversation.getInitialQuery() + " " + userMessage).toLowerCase();
+        String userText = userMessage != null ? userMessage.trim().toLowerCase() : "";
+        String initialText = conversation.getInitialQuery() != null ? conversation.getInitialQuery().trim().toLowerCase() : "";
+        String fullText = (initialText + " " + userText).toLowerCase();
+
         List<RawDiagnosticStep> newSteps = new ArrayList<>();
         String reply;
         String citation;
 
+        // =========================================================================
+        // A. CONVERSATIONAL MULTI-TURN FOLLOW-UP DETECTION
+        // =========================================================================
+
+        boolean isFollowUp = history != null && history.size() >= 2;
+
+        // Case A1: User clarifies they don't have dedicated graphics / only integrated graphics
+        if (userText.contains("graphics doesnt have") || userText.contains("graphics doesn't have")
+                || userText.contains("no graphics") || userText.contains("doesnt have graphics")
+                || userText.contains("doesn't have graphics") || userText.contains("dont have graphics")
+                || userText.contains("don't have graphics") || userText.contains("no gpu")
+                || userText.contains("dont have a graphics") || userText.contains("don't have a graphics")
+                || userText.contains("without graphics") || userText.contains("integrated graphics")) {
+
+            citation = "SOP-HW-023: Laptop LCD Panel & Screen Artifact Diagnostics.pdf";
+            reply = "### 💡 Understanding Laptop Graphics (Integrated vs. Dedicated)\n" +
+                    "Thank you for clarifying! Many enterprise laptops do not have a dedicated gaming graphics card (like NVIDIA GeForce or AMD Radeon). Instead, your laptop uses **Integrated Graphics** built directly inside your processor:\n" +
+                    "- If your laptop has an Intel CPU: it uses **Intel Iris Xe** or **Intel UHD Graphics**.\n" +
+                    "- If your laptop has an AMD CPU: it uses **AMD Radeon Graphics**.\n\n" +
+                    "---\n\n" +
+                    "### ⚠️ What the Green Line on Your Screen Actually Means\n" +
+                    "Because a **vertical or horizontal green line is physically appearing across your screen**, here is the truth:\n" +
+                    "In over 95% of cases, this is **NOT a graphics card or driver issue at all**—it is a **physical hardware failure of the LCD display panel** (known as a broken subpixel column or damaged Chip-On-Film gate ribbon cable inside the screen).\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ The 30-Second Confirmation Test: The BIOS Check\n" +
+                    "You can confirm 100% whether the screen is physically broken in under 1 minute:\n" +
+                    "1. Save your work and **Restart your laptop**.\n" +
+                    "2. As soon as the screen turns on (before Windows or any drivers load), repeatedly tap **`F2`**, **`F12`**, or **`Del`** to open the **BIOS / UEFI firmware screen**.\n" +
+                    "3. **Observe the green line:**\n" +
+                    "   - **If the green line is STILL visible on the BIOS screen:** This confirms a **100% physical LCD hardware defect**. No software setting, update, or driver can fix a physically damaged screen.\n" +
+                    "   - **If the line DISAPPEARS in BIOS:** Then it is caused by Windows refresh rate or display scaling.\n\n" +
+                    "---\n\n" +
+                    "### 📋 Next Step: Escalate for Screen Replacement\n" +
+                    "Since physical screen lines require an LCD panel replacement under warranty or by IT hardware engineers:\n" +
+                    "- Click the **\"Convert to Support Ticket\"** button below to immediately open a repair request. We will attach your diagnosis so the hardware team can order a replacement display.";
+
+            newSteps.add(new RawDiagnosticStep(
+                    "Perform 30-Second BIOS Hardware Screen Test",
+                    "Restart laptop and press F2/F12 to enter BIOS. If green line remains visible in BIOS, the LCD panel is physically defective.",
+                    "shutdown /r /fw /t 5"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Escalate to IT Hardware Support for Screen Replacement",
+                    "Physical LCD ribbon damage cannot be fixed via software. Convert session to IT support ticket for hardware servicing.",
+                    null
+            ));
+            return new DiagnosticPlan(reply, citation, 0.98, newSteps);
+        }
+
+        // Case A2: User says line / problem persists in BIOS ("in bios", "showing in bios", "saw in bios")
+        if (userText.contains("in bios") || userText.contains("showing in bios") || userText.contains("saw in bios") || userText.contains("still in bios") || userText.contains("yes in bios")) {
+            citation = "SOP-HW-023: Laptop LCD Panel & Screen Artifact Diagnostics.pdf";
+            reply = "### 🔴 Confirmed Physical Hardware Defect\n" +
+                    "Because the line appears directly on the **BIOS / UEFI firmware screen** before Windows or any operating system drivers load:\n" +
+                    "- **This 100% confirms a physical hardware defect** inside the laptop's LCD panel (a dead/stuck subpixel line) or a damaged display ribbon cable in the hinge.\n" +
+                    "- No software, Windows setting, or driver update can repair physical LCD hardware damage.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ What Needs to Be Done\n" +
+                    "The laptop display panel must be replaced by our IT Hardware Engineering team or through manufacturer warranty (Dell / HP / Lenovo).\n\n" +
+                    "👉 **Please click \"Convert to Support Ticket\"** above or below. We will log this with high priority and arrange a replacement laptop or on-site screen repair.";
+
+            newSteps.add(new RawDiagnosticStep(
+                    "Escalate to Hardware Support for Screen Replacement",
+                    "LCD panel hardware failure confirmed via BIOS test. Convert to ticket for warranty panel swap.",
+                    null
+            ));
+            return new DiagnosticPlan(reply, citation, 0.99, newSteps);
+        }
+
+        // Case A3: User tested BIOS and line does NOT appear ("not in bios", "disappeared in bios")
+        if (userText.contains("not in bios") || userText.contains("gone in bios") || userText.contains("disappeared in bios") || userText.contains("clean in bios")) {
+            citation = "SOP-HW-007: Multi-Display & GPU Driver Recovery.pdf";
+            reply = "### 🟢 Software / Refresh Rate Conflict Confirmed\n" +
+                    "Excellent news! Because the green line does **NOT** appear on the BIOS screen:\n" +
+                    "- Your laptop's physical screen hardware is completely healthy!\n" +
+                    "- The line is caused by a Windows display refresh rate conflict or a corrupted integrated display driver.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fix in Windows\n\n" +
+                    "#### Step 1: Change Display Refresh Rate to 60Hz in Settings\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Display** > **Advanced display**.\n" +
+                    "3. Under **Choose a refresh rate**, change it to **60 Hz** (if it was set to 120Hz or 144Hz).\n\n" +
+                    "#### Step 2: Reinstall Integrated Display Driver\n" +
+                    "1. Press **`Windows Key + X`** and open **Device Manager**.\n" +
+                    "2. Expand **Display adapters**.\n" +
+                    "3. Right-click your integrated graphics (**Intel Iris Xe / Intel UHD** or **AMD Radeon Graphics**) and choose **Uninstall device** (do NOT delete the driver files).\n" +
+                    "4. Restart your laptop — Windows will automatically re-detect the display and load a clean driver.";
+
+            newSteps.add(new RawDiagnosticStep(
+                    "Change Refresh Rate in Windows Settings",
+                    "Press Win + I > System > Display > Advanced display > Set refresh rate to 60 Hz.",
+                    "ms-settings:display-advanced"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Reinstall Display Adapter Driver in Device Manager",
+                    "Open Device Manager > Display adapters > Right-click graphics card > Uninstall > Restart laptop.",
+                    "devmgmt.msc"
+            ));
+            return new DiagnosticPlan(reply, citation, 0.95, newSteps);
+        }
+
+        // Case A4: User reports that previous steps didn't solve the issue / still not working
+        if (isFollowUp && (userText.contains("still") || userText.contains("didn't work") || userText.contains("did not work")
+                || userText.contains("not solved") || userText.contains("same problem") || userText.contains("still there")
+                || userText.contains("failed") || userText.contains("not working"))) {
+
+            citation = "SOP-GEN-002: IT Support Incident Escalation Standard.pdf";
+            reply = "### ⚠️ Issue Still Persists - Ready for IT Engineer Escalation\n" +
+                    "Thank you for trying those initial troubleshooting steps. Since the issue remains unresolved:\n\n" +
+                    "- The problem likely requires hands-on hardware inspection, specialized administrative permissions, or a component replacement.\n" +
+                    "- You do not have to keep troubleshooting alone!\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Recommended Next Step: Escalate to Support Ticket\n" +
+                    "1. Click the **\"Convert to Support Ticket\"** button in the header or below.\n" +
+                    "2. Choose the priority level (e.g. **High** if this blocks your daily work).\n" +
+                    "3. Add any specific details (e.g., laptop serial number, brand, or room location).\n" +
+                    "4. Our IT support team will be notified immediately with your full conversation transcript and will follow up with you directly.";
+
+            newSteps.add(new RawDiagnosticStep(
+                    "Escalate Incident to Human IT Support Engineer",
+                    "Click 'Convert to Support Ticket' to open a formal IT support ticket with full diagnostic history.",
+                    null
+            ));
+            return new DiagnosticPlan(reply, citation, 0.96, newSteps);
+        }
+
+        // =========================================================================
+        // B. SPECIFIC SYMPTOM INTENT CLASSIFICATION
+        // =========================================================================
+
         // 1. Cursor / Touchpad / Mouse Issues
-        if (text.contains("cursor") || text.contains("touchpad") || text.contains("trackpad") || text.contains("mouse") || text.contains("pointer")) {
+        if (fullText.contains("cursor") || fullText.contains("touchpad") || fullText.contains("trackpad") || fullText.contains("mouse") || fullText.contains("pointer")) {
             citation = "SOP-HW-012: Laptop Touchpad & Pointer Troubleshooting Guide.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "When your cursor disappears on a laptop, it is usually because the touchpad was accidentally disabled by a **keyboard shortcut**, turned off in **Windows Settings**, or the **touchpad driver** stopped responding.\n\n" +
@@ -520,9 +656,54 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "pnputil /scan-devices"
             ));
         }
-        // 2. Wi-Fi Missing / Disabled / Adapter Gone
-        else if ((text.contains("wifi") || text.contains("wi-fi") || text.contains("wlan")) && 
-                 (text.contains("gone") || text.contains("missing") || text.contains("not there") || text.contains("no wifi") || text.contains("disabled") || text.contains("disappeared"))) {
+        // 2. Physical Screen Lines / Green Line / LCD Panel Damage / Artifacts (Checked before external monitors!)
+        else if (fullText.contains("green line") || fullText.contains("pink line") || fullText.contains("white line")
+                || fullText.contains("vertical line") || fullText.contains("horizontal line") || fullText.contains("line on screen")
+                || fullText.contains("lines on screen") || fullText.contains("screen line") || fullText.contains("colored line")
+                || fullText.contains("line in the middle") || fullText.contains("screen glitch") || fullText.contains("dead pixel")) {
+
+            citation = "SOP-HW-023: Laptop LCD Panel & Screen Artifact Diagnostics.pdf";
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "A vertical or horizontal line (often green, pink, or white) appearing on a laptop screen usually points to one of three causes:\n" +
+                    "1. **Damaged LCD Display Panel:** A broken subpixel array or failing gate driver (Chip-On-Film failure) inside the glass panel.\n" +
+                    "2. **Pinched Display Ribbon Cable:** The internal eDP video cable running through the laptop hinge is worn, strained, or loose.\n" +
+                    "3. **Software Refresh Rate Glitch:** A rare conflict between Windows refresh rate and the display panel.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Diagnostic Guide\n\n" +
+                    "#### Step 1: The 30-Second BIOS Test (Crucial Hardware vs. Software Test)\n" +
+                    "This test tells you immediately whether the screen is physically broken:\n" +
+                    "1. Save your work and **Restart your laptop**.\n" +
+                    "2. As soon as the screen powers on (before the Windows logo appears), repeatedly tap **`F2`**, **`F12`**, or **`Del`** (depending on your laptop brand: Dell, HP, Lenovo) to open the **BIOS / UEFI setup screen**.\n" +
+                    "3. **Look closely at the screen in BIOS:**\n" +
+                    "   - **If the green line is STILL visible in BIOS:** This is a **100% confirmed physical hardware defect** in the LCD panel or ribbon cable. Drivers, software, or Windows settings cannot fix it, and the screen must be replaced.\n" +
+                    "   - **If the green line DISAPPEARS in BIOS:** The screen hardware is fine, and the issue is caused by a Windows display refresh rate conflict.\n\n" +
+                    "#### Step 2: The Laptop Hinge Movement Test\n" +
+                    "- Gently tilt your laptop screen forward and backward on its hinges.\n" +
+                    "- If the green line flickers, changes colors, or temporarily disappears as you move the hinge, the **internal display flex ribbon cable** is pinched or loose inside the hinge.\n\n" +
+                    "#### Step 3: Connect to an External Monitor or TV\n" +
+                    "- Plug your laptop into an external monitor or TV using an HDMI or USB-C cable.\n" +
+                    "- **If the external monitor has NO line:** Your laptop's graphics processor and motherboard are completely healthy! Only the built-in laptop screen has physical damage.\n\n" +
+                    "#### Step 4: Check Refresh Rate in Windows Settings (If Line Was Absent in BIOS)\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Display** > **Advanced display**.\n" +
+                    "3. Look for **Choose a refresh rate** and set it to **60 Hz**.\n\n" +
+                    "#### Step 5: Hardware Replacement & Escalation\n" +
+                    "If the green line is visible in BIOS, physical LCD replacement is required. Click **\"Convert to Support Ticket\"** to request an LCD screen replacement from IT Hardware Support.";
+
+            newSteps.add(new RawDiagnosticStep(
+                    "Run 30-Second BIOS Screen Test (F2 / F12)",
+                    "Restart laptop and tap F2/F12 to enter BIOS. If green line remains visible, the LCD panel is physically defective.",
+                    "shutdown /r /fw /t 5"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Connect External Monitor to Confirm GPU Health",
+                    "Connect HDMI/USB-C monitor. If external display is clean, motherboard and GPU are healthy.",
+                    null
+            ));
+        }
+        // 3. Wi-Fi Missing / Disabled / Adapter Gone
+        else if ((fullText.contains("wifi") || fullText.contains("wi-fi") || fullText.contains("wlan")) && 
+                 (fullText.contains("gone") || fullText.contains("missing") || fullText.contains("not there") || fullText.contains("no wifi") || fullText.contains("disabled") || fullText.contains("disappeared"))) {
             citation = "SOP-NET-008: Windows WLAN Adapter & Service Recovery.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "When the Wi-Fi icon or toggle vanishes from Windows, it usually means the network adapter was **disabled in Settings**, stuck in **Airplane Mode**, or the **wireless network driver** crashed.\n\n" +
@@ -565,8 +746,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Restart-Service -Name WlanSvc -Force"
             ));
         }
-        // 3. Audio / Sound / Microphone Issues
-        else if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic") || text.contains("volume")) {
+        // 4. Audio / Sound / Microphone Issues
+        else if (fullText.contains("audio") || fullText.contains("sound") || fullText.contains("speaker") || fullText.contains("headset") || fullText.contains("mic") || fullText.contains("volume")) {
             citation = "SOP-HW-015: Windows Audio Service & Endpoint Diagnostics.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "When audio stops working or the microphone is silent, the wrong playback device is usually selected in **Windows Settings**, the microphone is muted by a privacy switch, or the **Realtek audio driver** needs to be reloaded.\n\n" +
@@ -604,8 +785,10 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force"
             ));
         }
-        // 4. Display / Screen / External Monitor / HDMI
-        else if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness") || text.contains("second monitor")) {
+        // 4. External Monitor / HDMI / Projector / Second Screen (ONLY when explicitly asking about second monitor/HDMI)
+        else if (fullText.contains("second monitor") || fullText.contains("external monitor") || fullText.contains("hdmi")
+                || fullText.contains("projector") || fullText.contains("dual monitor") || fullText.contains("tv screen")
+                || fullText.contains("another monitor") || fullText.contains("second display")) {
             citation = "SOP-HW-007: Multi-Display & GPU Driver Recovery.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "Second monitor blackouts or display detection failures usually happen because projection mode is set to 'PC Screen Only', cables are loose, or the **graphics driver (Intel, AMD, or NVIDIA)** needs a restart.\n\n" +
@@ -641,8 +824,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "ms-settings:display"
             ));
         }
-        // 5. Bluetooth Issues
-        else if (text.contains("bluetooth") || text.contains("bt ")) {
+        // 6. Bluetooth Issues
+        else if (fullText.contains("bluetooth") || fullText.contains("bt ")) {
             citation = "SOP-HW-019: Windows Bluetooth Stack Recovery.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "When Bluetooth devices won't connect or the Bluetooth toggle disappears, the adapter has usually been disabled in **Windows Settings** or the **Bluetooth support service** is suspended.\n\n" +
@@ -679,8 +862,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Restart-Service -Name bthserv -Force"
             ));
         }
-        // 6. Battery / Power / Charger Issues
-        else if (text.contains("battery") || text.contains("charger") || text.contains("charging") || text.contains("plugged in") || text.contains("power")) {
+        // 7. Battery / Power / Charger Issues
+        else if (fullText.contains("battery") || fullText.contains("charger") || fullText.contains("charging") || fullText.contains("plugged in") || fullText.contains("power")) {
             citation = "SOP-HW-021: Enterprise Laptop Power & Battery Health Diagnostics.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "When a laptop won't charge or battery life drains unusually fast, it is often due to a loose USB-C charging port, a power throttling profile, or a frozen battery management driver in Windows.\n\n" +
@@ -713,8 +896,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "devmgmt.msc"
             ));
         }
-        // 7. Docker Desktop & Container Engines
-        else if (text.contains("docker") || text.contains("wsl") || text.contains("container")) {
+        // 8. Docker Desktop & Container Engines
+        else if (fullText.contains("docker") || fullText.contains("wsl") || fullText.contains("container")) {
             citation = "SOP-DEV-022: Windows Docker Desktop & WSL2 Permissions.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "Docker Desktop startup and socket errors (such as EACCES or named pipe failures) occur when your user account lacks **ACL permissions** on the Docker configuration files or the **WSL2 Linux distribution** has stopped.\n\n" +
@@ -740,8 +923,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\" ; wsl --shutdown"
             ));
         }
-        // 8. Git / SSH / Version Control Access
-        else if (text.contains("git") || text.contains("ssh") || text.contains("publickey") || text.contains("push rejected")) {
+        // 9. Git / SSH / Version Control Access
+        else if (fullText.contains("git") || fullText.contains("ssh") || fullText.contains("publickey") || fullText.contains("push rejected")) {
             citation = "SOP-DEV-018: Enterprise Git & SSH Key Configuration.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "A **`Permission denied (publickey)`** error means your local SSH agent cannot locate your private key or your public key has not been added to your remote repository account (GitHub / GitLab).\n\n" +
@@ -766,8 +949,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\" -ErrorAction SilentlyContinue"
             ));
         }
-        // 9. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
-        else if (text.contains("bitlocker") || text.contains("tpm") || text.contains("recovery key")) {
+        // 10. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
+        else if (fullText.contains("bitlocker") || fullText.contains("tpm") || fullText.contains("recovery key")) {
             citation = "SOP-SEC-003: Azure AD Intune BitLocker & TPM Diagnostics.pdf";
             reply = "### 🔍 BitLocker Recovery Instructions\n" +
                     "When Windows prompts for a 48-digit BitLocker recovery key, it can be retrieved securely from your company Microsoft Intune account.\n\n" +
@@ -784,8 +967,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Get-BitLockerVolume -MountPoint 'C:'"
             ));
         }
-        // 10. VPN & General Network Connectivity
-        else if (text.contains("vpn") || text.contains("network") || text.contains("globalprotect") || text.contains("disconnect")) {
+        // 11. VPN & General Network Connectivity
+        else if (fullText.contains("vpn") || fullText.contains("globalprotect") || fullText.contains("disconnect")) {
             citation = "SOP-NET-014: Corporate VPN & Remote Access Protocol.pdf (Section 3.2)";
             if (existingSteps.isEmpty()) {
                 reply = "### 🔍 What Might Be Happening\n" +
@@ -821,8 +1004,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 ));
             }
         }
-        // 11. Outlook & Application Software
-        else if (text.contains("outlook") || text.contains("email") || text.contains("teams") || text.contains("office") || text.contains("excel") || text.contains("word") || text.contains("0x8004")) {
+        // 12. Outlook & Application Software
+        else if (fullText.contains("outlook") || fullText.contains("email") || fullText.contains("teams") || fullText.contains("office") || fullText.contains("excel") || fullText.contains("word") || fullText.contains("0x8004")) {
             citation = "SOP-APP-009: Microsoft 365 Outlook & Teams Diagnostic SOP.docx";
             if (existingSteps.isEmpty()) {
                 reply = "### 🔍 What Might Be Happening\n" +
@@ -856,8 +1039,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 ));
             }
         }
-        // 12. System Sluggishness & High Resource Usage
-        else if (text.contains("slow") || text.contains("freeze") || text.contains("high cpu") || text.contains("ram") || text.contains("memory") || text.contains("hang")) {
+        // 13. System Sluggishness & High Resource Usage
+        else if (fullText.contains("slow") || fullText.contains("freeze") || fullText.contains("high cpu") || fullText.contains("ram") || fullText.contains("memory") || fullText.contains("hang")) {
             citation = "SOP-SYS-004: Windows Performance Optimization & Diagnostics.pdf";
             reply = "### 🔍 What Might Be Happening\n" +
                     "System slowdowns and freezing are usually caused by a background app consuming 100% CPU/RAM, full disk storage, or pending Windows updates.\n\n" +
