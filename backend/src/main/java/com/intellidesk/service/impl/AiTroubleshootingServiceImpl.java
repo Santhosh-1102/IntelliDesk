@@ -448,6 +448,12 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
 
     private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history) {
         StringBuilder sb = new StringBuilder();
+        sb.append("You are the IntelliDesk Enterprise IT AI Specialist. Guide enterprise employees step-by-step with practical, user-friendly instructions:\n");
+        sb.append("- Explain what is happening in simple, clear terms.\n");
+        sb.append("- Guide them step-by-step through Windows Settings (mentioning exact paths and toggles to check, e.g. 'Press Win + I > Settings > [Section] > verify toggle is ON').\n");
+        sb.append("- Guide them through Device Manager (how to check, enable, or update the device driver via Win + X > Device Manager).\n");
+        sb.append("- Guide them on how to open Google Chrome, visit their laptop manufacturer's driver website (Dell, HP, Lenovo), download the latest driver, and reinstall it.\n");
+        sb.append("- Optionally provide a quick terminal/PowerShell command in a ```powershell code block for advanced users.\n\n");
         sb.append("Initial Problem: ").append(conversation.getInitialQuery()).append("\n");
         sb.append("Domain Category: ").append(conversation.getIdentifiedCategory()).append("\n\n");
         sb.append("Conversation History:\n");
@@ -455,7 +461,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             sb.append(msg.getSenderType()).append(": ").append(msg.getContent()).append("\n");
         }
         sb.append("\nUser Latest Message: ").append(userMessage).append("\n");
-        sb.append("Provide a clear diagnostic response and exactly 1 or 2 concrete steps that the user can test.");
+        sb.append("Provide a clear, conversational diagnostic response.");
         return sb.toString();
     }
 
@@ -472,244 +478,339 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 1. Cursor / Touchpad / Mouse Issues
         if (text.contains("cursor") || text.contains("touchpad") || text.contains("trackpad") || text.contains("mouse") || text.contains("pointer")) {
             citation = "SOP-HW-012: Laptop Touchpad & Pointer Troubleshooting Guide.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "A missing or frozen mouse cursor on a laptop is almost always caused by an **accidental Fn hardware lock** or a suspended **Windows I2C/HID pointer driver**.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "When your cursor disappears on a laptop, it is usually because the touchpad was accidentally disabled by a **keyboard shortcut**, turned off in **Windows Settings**, or the **touchpad driver** stopped responding.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Check Laptop Touchpad Function Lock Key\n" +
-                    "Most laptops (Dell, Lenovo, HP, Asus) have a dedicated shortcut key to disable/enable the touchpad:\n" +
-                    "- Press **`Fn + F6`**, **`Fn + F7`**, **`Fn + F9`**, or **`Fn + F10`** (look for the trackpad icon with a slash through it).\n" +
-                    "- On HP and Dell laptops, try **double-tapping the top-left sensor dot** on the touchpad.\n" +
-                    "- You can also open the Windows Mouse properties directly by running:\n" +
-                    "```powershell\n" +
-                    "main.cpl\n" +
-                    "```\n\n" +
-                    "#### Step 2: Restart Pointer Drivers in Device Manager\n" +
-                    "If the cursor is still not visible, force Windows to rescan the hardware bus and restart the pointing device driver:\n" +
-                    "```powershell\n" +
-                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false\n" +
-                    "```";
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Your Laptop's Touchpad Lock Key\n" +
+                    "- Many laptops have a quick lock key on the top row of the keyboard. Look for a key with a touchpad icon and a slash through it.\n" +
+                    "- Try pressing **`Fn + F6`**, **`Fn + F7`**, **`Fn + F9`**, or **`Fn + F10`** (depending on your laptop brand: Dell, HP, Lenovo, or Asus).\n" +
+                    "- On HP and Dell laptops, try **double-tapping the top-left sensor dot** on the touchpad itself to unlock it.\n\n" +
+                    "#### Step 2: Go to Windows Settings and Check if Touchpad is Enabled\n" +
+                    "1. Press **`Windows Key + I`** on your keyboard to open **Settings**.\n" +
+                    "2. Click on **Bluetooth & devices** in the left sidebar, then click on **Touchpad**.\n" +
+                    "3. Check whether the **Touchpad** toggle is switched **ON** or **OFF**.\n" +
+                    "   - If it is **OFF**, click the switch to turn it **ON**.\n" +
+                    "4. Click to expand the Touchpad section and make sure the box *'Leave touchpad on when a mouse is connected'* is **checked**.\n\n" +
+                    "#### Step 3: Check Device Manager\n" +
+                    "1. Press **`Windows Key + X`** and click **Device Manager** (or press `Win + R`, type `devmgmt.msc` and hit Enter).\n" +
+                    "2. Double-click **Mice and other pointing devices** to expand it.\n" +
+                    "3. Look for your touchpad (e.g. *Synaptics TouchPad*, *ELAN Touchpad*, or *HID-compliant mouse*).\n" +
+                    "4. If you see a small black downward arrow next to it, it is disabled. **Right-click it** and select **Enable device**.\n" +
+                    "5. You can also right-click it and select **Update driver** > **Search automatically for drivers**.\n\n" +
+                    "#### Step 4: Open Google Chrome and Download the Latest Official Driver\n" +
+                    "If the cursor still isn't working, the driver may need to be reinstalled from your manufacturer:\n" +
+                    "1. Open **Google Chrome** (you can connect an external USB mouse or navigate with the `Tab` and arrow keys).\n" +
+                    "2. Go to your laptop manufacturer's official support website:\n" +
+                    "   - **Dell**: [dell.com/support](https://www.dell.com/support)\n" +
+                    "   - **HP**: [support.hp.com](https://support.hp.com)\n" +
+                    "   - **Lenovo**: [support.lenovo.com](https://support.lenovo.com)\n" +
+                    "3. Enter your laptop's **Serial Number / Service Tag** or select your laptop model.\n" +
+                    "4. Navigate to **Drivers & Downloads** and look under the **Mouse, Touchpad & Input Devices** category.\n" +
+                    "5. Download the latest **Touchpad / Synaptics / ELAN Driver**, run the `.exe` installer, and restart your laptop.\n\n" +
+                    "*(Optional Quick Command: Press `Win + R`, type `main.cpl` and hit Enter to jump straight to Mouse Properties).*";
             newSteps.add(new RawDiagnosticStep(
-                    "Toggle Laptop Touchpad Function Lock (Fn Key)",
-                    "Try pressing Fn + F6, Fn + F7, Fn + F9, or double-tapping the trackpad sensor dot.",
+                    "Check Touchpad Toggle in Windows Settings",
+                    "Press Win + I > Bluetooth & devices > Touchpad and ensure the switch is turned ON.",
                     "main.cpl"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Restart Mouse & Pointer Hardware Driver (HID)",
-                    "Scan the hardware bus and restart the pointing device driver in Windows Device Manager.",
-                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false"
+                    "Enable Touchpad Driver in Device Manager or Download from Chrome",
+                    "Open Device Manager (Win + X) > Mice and other pointing devices > Enable device. Alternatively, visit Dell/HP/Lenovo support via Chrome to download the official driver.",
+                    "pnputil /scan-devices"
             ));
         }
         // 2. Wi-Fi Missing / Disabled / Adapter Gone
         else if ((text.contains("wifi") || text.contains("wi-fi") || text.contains("wlan")) && 
                  (text.contains("gone") || text.contains("missing") || text.contains("not there") || text.contains("no wifi") || text.contains("disabled") || text.contains("disappeared"))) {
             citation = "SOP-NET-008: Windows WLAN Adapter & Service Recovery.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "When the Wi-Fi icon or toggle vanishes completely from Windows, it indicates the network adapter is **software-disabled**, stuck in **Airplane Mode**, or the **Windows WLAN AutoConfig service (`WlanSvc`)** has stopped.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "When the Wi-Fi icon or toggle vanishes from Windows, it usually means the network adapter was **disabled in Settings**, stuck in **Airplane Mode**, or the **wireless network driver** crashed.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Force-Enable All Wireless Adapters\n" +
-                    "Run this command in PowerShell to clear software disable flags and re-enable your Wi-Fi interface:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Quick Settings & Airplane Mode\n" +
+                    "- Press **`Windows Key + A`** to open the Quick Settings panel in the bottom-right corner of your screen.\n" +
+                    "- Ensure **Airplane Mode** is turned **OFF**.\n" +
+                    "- If your laptop has a physical Wi-Fi button or function key (e.g. `Fn + F2` or `Fn + F12`), press it once to verify it is not switched off.\n\n" +
+                    "#### Step 2: Go to Windows Settings and Enable the Wi-Fi Adapter\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Click on **Network & internet** in the left sidebar.\n" +
+                    "3. Scroll down and click on **Advanced network settings**.\n" +
+                    "4. Under **Network adapters**, look for **Wi-Fi**.\n" +
+                    "   - If it shows a button saying **Enable**, click it to turn the Wi-Fi card back on.\n\n" +
+                    "#### Step 3: Check Device Manager\n" +
+                    "1. Press **`Windows Key + X`** and choose **Device Manager**.\n" +
+                    "2. Click to expand **Network adapters**.\n" +
+                    "3. Look for your wireless card (e.g. *Intel Wi-Fi 6*, *Realtek Wireless LAN*, or *Qualcomm Atheros*).\n" +
+                    "4. If you see a downward arrow, **right-click it** and select **Enable device**.\n" +
+                    "5. If there is a yellow warning triangle, **right-click it** and choose **Update driver**.\n\n" +
+                    "#### Step 4: Open Google Chrome and Download the Latest Wi-Fi Driver\n" +
+                    "If Windows cannot find the wireless card, download a fresh driver from the manufacturer:\n" +
+                    "1. Connect your laptop using an Ethernet cable, or connect your phone with a USB cable and turn on **USB Tethering** in your phone's hotspot settings for temporary internet.\n" +
+                    "2. Open **Google Chrome** and go to your laptop maker's official driver page (Dell, HP, or Lenovo Support).\n" +
+                    "3. Type your laptop model or Service Tag, click **Drivers & Downloads**, and choose **Network / Wireless**.\n" +
+                    "4. Download the latest **Intel or Realtek Wireless LAN driver**, run the installer, and restart your computer.\n\n" +
+                    "*(Optional Quick Command: Run this in PowerShell to restart the Windows Wi-Fi engine):*\n" +
                     "```powershell\n" +
-                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false\n" +
-                    "```\n\n" +
-                    "#### Step 2: Restart the Windows WLAN AutoConfig Service\n" +
-                    "Restarting `WlanSvc` forces Windows to rebuild the network card enumeration and restores the Wi-Fi icon in your system tray:\n" +
-                    "```powershell\n" +
-                    "Restart-Service -Name WlanSvc -Force ; netsh winsock reset\n" +
+                    "Restart-Service -Name WlanSvc -Force\n" +
                     "```";
             newSteps.add(new RawDiagnosticStep(
-                    "Force Enable Wi-Fi Adapter & Clear Adapter Disable",
-                    "Execute netsh and Enable-NetAdapter to re-enable all wireless network adapters.",
-                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false"
+                    "Enable Wi-Fi in Windows Settings",
+                    "Press Win + I > Network & internet > Advanced network settings > Enable Wi-Fi adapter.",
+                    "ms-settings:network-advancedsettings"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Restart Windows WLAN AutoConfig Service (WlanSvc)",
-                    "WlanSvc manages wireless discovery. Restarting it restores the Wi-Fi tray icon and available networks list.",
-                    "Restart-Service -Name WlanSvc -Force ; netsh winsock reset"
+                    "Restart Wi-Fi Service & Device Manager",
+                    "Open Device Manager > Network adapters > Enable device, or restart WlanSvc service in PowerShell.",
+                    "Restart-Service -Name WlanSvc -Force"
             ));
         }
         // 3. Audio / Sound / Microphone Issues
         else if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic") || text.contains("volume")) {
             citation = "SOP-HW-015: Windows Audio Service & Endpoint Diagnostics.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "Missing audio outputs or microphone dropouts typically occur when the **Windows Audio Endpoint Builder** hangs or the active playback stream desynchronizes.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "When audio stops working or the microphone is silent, the wrong playback device is usually selected in **Windows Settings**, the microphone is muted by a privacy switch, or the **Realtek audio driver** needs to be reloaded.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Restart Core Windows Audio Services\n" +
-                    "Restarts `AudioSrv` and `AudioEndpointBuilder` to reload all playback and recording streams without requiring a computer reboot:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Physical Buttons and Cables\n" +
+                    "- Check your keyboard's mute key (look for `F1` or `Fn + F1` with a speaker slash icon) and press it to unmute.\n" +
+                    "- If using headphones or an external speaker, unplug the 3.5mm jack or USB cable and plug it firmly back in.\n\n" +
+                    "#### Step 2: Check Windows Sound Settings\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Sound**.\n" +
+                    "3. Under **Output**, verify that the correct device is selected (e.g. *Speakers (Realtek Audio)* or your headset) and ensure the master volume slider is set above 50%.\n" +
+                    "4. Under **Input**, verify that your microphone is selected and speak into it to see if the volume test bar moves.\n" +
+                    "5. Go to **Privacy & security** > **Microphone** and make sure **Microphone access** is toggled **ON**.\n\n" +
+                    "#### Step 3: Check Device Manager\n" +
+                    "1. Press **`Windows Key + X`** and choose **Device Manager**.\n" +
+                    "2. Expand **Sound, video and game controllers**.\n" +
+                    "3. Right-click **Realtek High Definition Audio** (or your audio device) and click **Enable device** (or **Update driver**).\n\n" +
+                    "#### Step 4: Open Google Chrome and Download the Official Audio Driver\n" +
+                    "1. Open **Google Chrome** and visit your laptop manufacturer's driver website (e.g. Dell Support, HP Support, or Lenovo Support).\n" +
+                    "2. Enter your laptop model number.\n" +
+                    "3. Find the **Audio** category, download the latest **Realtek High Definition Audio Driver** installer, run it, and restart your PC.\n\n" +
+                    "*(Optional Quick Command: Run this in PowerShell to restart the Windows Audio engine):*\n" +
                     "```powershell\n" +
                     "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force\n" +
-                    "```\n\n" +
-                    "#### Step 2: Rescan Audio Hardware\n" +
-                    "Forces Windows to re-enumerate all 3.5mm jacks, USB headsets, and HDMI audio outputs:\n" +
-                    "```powershell\n" +
-                    "pnputil /scan-devices\n" +
                     "```";
             newSteps.add(new RawDiagnosticStep(
-                    "Restart Core Windows Audio Services",
-                    "Restarts AudioSrv and AudioEndpointBuilder to reload all playback streams.",
-                    "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force"
+                    "Check Windows Sound & Volume Settings",
+                    "Press Win + I > System > Sound and verify the active Output/Input device and volume levels.",
+                    "ms-settings:sound"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Rescan and Enumerate Audio Hardware Devices",
-                    "Forces Windows Plug-and-Play manager to re-detect connected audio devices.",
-                    "pnputil /scan-devices"
+                    "Restart Windows Audio Services",
+                    "Restarts AudioSrv and AudioEndpointBuilder to reload all playback streams.",
+                    "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force"
             ));
         }
         // 4. Display / Screen / External Monitor / HDMI
         else if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness") || text.contains("second monitor")) {
             citation = "SOP-HW-007: Multi-Display & GPU Driver Recovery.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "Screen blackouts, multi-monitor detection failures, or second display freezes are usually resolved by resetting the **Windows graphics driver pipeline** or updating EDID timings.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "Second monitor blackouts or display detection failures usually happen because projection mode is set to 'PC Screen Only', cables are loose, or the **graphics driver (Intel, AMD, or NVIDIA)** needs a restart.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Trigger GPU Driver Reset Shortcut\n" +
-                    "Press **`Win + Ctrl + Shift + B`** on your keyboard (the screen will briefly flicker and beep). Then execute the projection command to extend your desktop:\n" +
-                    "```powershell\n" +
-                    "displayswitch.exe /extend\n" +
-                    "```\n\n" +
-                    "#### Step 2: Re-Detect Connected Monitors via WMI\n" +
-                    "Query attached displays and clear stale display cache:\n" +
-                    "```powershell\n" +
-                    "Get-WmiObject -Namespace root\\wmi -Class WmiMonitorID\n" +
-                    "```";
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Cables and Projection Shortcut\n" +
+                    "- Unplug the HDMI, DisplayPort, or USB-C cable from both the laptop and the monitor, then firmly reconnect them.\n" +
+                    "- Ensure the monitor's power cable is plugged in and the monitor's input source (HDMI 1 / HDMI 2) matches your connected port.\n" +
+                    "- Press **`Windows Key + P`** on your keyboard to open the Project menu, and choose **Extend** (or **Duplicate**).\n\n" +
+                    "#### Step 2: Go to Windows Display Settings and Detect the Monitor\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Display**.\n" +
+                    "3. Under **Multiple displays**, click the **Detect** button to force Windows to look for your connected screen.\n" +
+                    "4. If detected, adjust the **Display resolution** to the recommended setting (e.g. 1920x1080).\n\n" +
+                    "#### Step 3: Trigger Windows Graphics Driver Reset Shortcut\n" +
+                    "- Press **`Windows Key + Ctrl + Shift + B`** simultaneously on your keyboard.\n" +
+                    "- Your screen will briefly flicker black and you will hear a short beep — this forces Windows to instantly reload the graphics pipeline without closing your apps.\n\n" +
+                    "#### Step 4: Open Google Chrome and Download the Latest Graphics Driver\n" +
+                    "If the display is still not recognized, update your GPU driver:\n" +
+                    "1. Open **Google Chrome** and visit your graphics card manufacturer:\n" +
+                    "   - **Intel Graphics**: [intel.com/content/www/us/en/download-center/home.html](https://www.intel.com/content/www/us/en/download-center/home.html)\n" +
+                    "   - **NVIDIA GeForce**: [nvidia.com/Download/index.aspx](https://www.nvidia.com/Download/index.aspx)\n" +
+                    "   - **AMD Radeon**: [amd.com/en/support](https://www.amd.com/en/support)\n" +
+                    "2. Download the official Driver Assistant or driver package for your GPU, run the installer, and restart your computer.";
             newSteps.add(new RawDiagnosticStep(
-                    "Trigger Windows GPU Driver Reset",
-                    "Press Win + Ctrl + Shift + B on your keyboard, then run displayswitch.",
+                    "Set Projection Mode to Extend (Win + P)",
+                    "Press Win + P and select Extend, or adjust multiple display detection in Windows Settings.",
                     "displayswitch.exe /extend"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Re-Detect Connected Displays & Refresh Resolution",
-                    "Force Windows WMI to query attached monitors and update EDID timings.",
-                    "Get-WmiObject -Namespace root\\wmi -Class WmiMonitorID"
+                    "Reset Graphics Driver Pipeline",
+                    "Press Win + Ctrl + Shift + B to trigger an instant GPU reset, or update display drivers via Chrome.",
+                    "ms-settings:display"
             ));
         }
         // 5. Bluetooth Issues
         else if (text.contains("bluetooth") || text.contains("bt ")) {
             citation = "SOP-HW-019: Windows Bluetooth Stack Recovery.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "When Bluetooth devices fail to pair or disconnect, the **Windows Bluetooth Support Service (`bthserv`)** cache has usually become corrupted.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "When Bluetooth devices won't connect or the Bluetooth toggle disappears, the adapter has usually been disabled in **Windows Settings** or the **Bluetooth support service** is suspended.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Restart Bluetooth Service\n" +
-                    "Restarts the background Bluetooth service and resets the peripheral handshake:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Go to Windows Settings and Check Bluetooth Toggle\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Click on **Bluetooth & devices**.\n" +
+                    "3. Check whether the **Bluetooth** switch is turned **ON**.\n" +
+                    "   - If it is already on, switch it **OFF**, wait 5 seconds, and switch it back **ON**.\n" +
+                    "   - If your device is listed under paired devices, click the three dots (`...`) next to it, choose **Remove device**, and pair it again.\n\n" +
+                    "#### Step 2: Check Device Manager\n" +
+                    "1. Press **`Windows Key + X`** and open **Device Manager**.\n" +
+                    "2. Expand the **Bluetooth** section.\n" +
+                    "3. If you see **Intel Wireless Bluetooth** or **Realtek Bluetooth Adapter** with a small downward arrow, **right-click it** and select **Enable device**.\n" +
+                    "4. If there is a yellow warning triangle, right-click and choose **Update driver**.\n\n" +
+                    "#### Step 3: Open Google Chrome and Download the Latest Bluetooth Driver\n" +
+                    "1. Open **Google Chrome** and visit your laptop manufacturer's support site (Dell / HP / Lenovo).\n" +
+                    "2. Enter your laptop model name or Service Tag.\n" +
+                    "3. Go to **Network / Wireless Drivers** and download the latest **Bluetooth Driver**.\n" +
+                    "4. Run the installer and restart your laptop.\n\n" +
+                    "*(Optional Quick Command: Run this in PowerShell to restart the Windows Bluetooth service):*\n" +
                     "```powershell\n" +
                     "Restart-Service -Name bthserv -Force\n" +
                     "```";
             newSteps.add(new RawDiagnosticStep(
-                    "Restart Bluetooth Support Service (bthserv)",
-                    "Restarts the Windows Bluetooth background engine and clears stuck peripheral pairing caches.",
+                    "Check Bluetooth Toggle in Windows Settings",
+                    "Press Win + I > Bluetooth & devices and verify the Bluetooth toggle is ON.",
+                    "ms-settings:bluetooth"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Enable Device in Device Manager or Restart Bluetooth Service",
+                    "Open Device Manager > Bluetooth > Enable device, or restart bthserv service.",
                     "Restart-Service -Name bthserv -Force"
             ));
         }
-        // 6. Docker Desktop & Container Engines
+        // 6. Battery / Power / Charger Issues
+        else if (text.contains("battery") || text.contains("charger") || text.contains("charging") || text.contains("plugged in") || text.contains("power")) {
+            citation = "SOP-HW-021: Enterprise Laptop Power & Battery Health Diagnostics.pdf";
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "When a laptop won't charge or battery life drains unusually fast, it is often due to a loose USB-C charging port, a power throttling profile, or a frozen battery management driver in Windows.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Charger and Outlet\n" +
+                    "- Check the charging LED indicator on the side of your laptop near the charging port.\n" +
+                    "- Try plugging your charger into a different wall outlet directly (avoid power strips) or test another USB-C port on your laptop.\n\n" +
+                    "#### Step 2: Go to Windows Settings and Check Power & Battery\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Power & battery**.\n" +
+                    "3. Under **Power mode**, set it to **Balanced** (or **Best performance** when plugged in).\n" +
+                    "4. Check the **Battery usage** chart to see if a background application is draining battery.\n\n" +
+                    "#### Step 3: Reinstall Battery Driver in Device Manager\n" +
+                    "1. Press **`Windows Key + X`** and click **Device Manager**.\n" +
+                    "2. Expand the **Batteries** section.\n" +
+                    "3. Right-click **Microsoft ACPI-Compliant Control Method Battery** and select **Uninstall device** (do NOT delete the driver software).\n" +
+                    "4. Restart your laptop. Windows will automatically detect your battery and install a clean, fresh power driver.\n\n" +
+                    "#### Step 4: Open Google Chrome and Check Manufacturer Battery Diagnostics\n" +
+                    "1. Open **Google Chrome** and download your manufacturer's diagnostic tool (e.g. **Dell SupportAssist**, **HP Support Assistant**, or **Lenovo Vantage**).\n" +
+                    "2. Run the built-in **Battery Health Diagnostic** to see if your battery cells are healthy or require hardware replacement.";
+            newSteps.add(new RawDiagnosticStep(
+                    "Check Windows Power & Battery Settings",
+                    "Press Win + I > System > Power & battery and set power mode to Balanced.",
+                    "ms-settings:powersleep"
+            ));
+            newSteps.add(new RawDiagnosticStep(
+                    "Reinstall Battery Driver in Device Manager",
+                    "Open Device Manager > Batteries > Uninstall ACPI Battery > Restart laptop to re-enumerate.",
+                    "devmgmt.msc"
+            ));
+        }
+        // 7. Docker Desktop & Container Engines
         else if (text.contains("docker") || text.contains("wsl") || text.contains("container")) {
             citation = "SOP-DEV-022: Windows Docker Desktop & WSL2 Permissions.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "Docker Desktop socket and startup errors (such as EACCES on named pipe) occur when terminal processes lack **ACL socket permissions** or the **WSL2 Linux distribution** is in a stopped state.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "Docker Desktop startup and socket errors (such as EACCES or named pipe failures) occur when your user account lacks **ACL permissions** on the Docker configuration files or the **WSL2 Linux distribution** has stopped.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Grant Full ACL Permissions to Docker Config\n" +
-                    "Run the permission grant command to give your user full access to Docker configurations:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Docker Desktop Settings\n" +
+                    "1. Open **Docker Desktop** from your Start menu.\n" +
+                    "2. Click the **Gear icon (Settings)** in the top-right bar.\n" +
+                    "3. In the **General** tab, make sure *'Use the WSL 2 based engine'* is **checked**.\n" +
+                    "4. Click **Apply & restart**.\n\n" +
+                    "#### Step 2: Grant Permissions and Restart WSL2\n" +
+                    "Open PowerShell as Administrator and run the permission fix and WSL reboot:\n" +
                     "```powershell\n" +
-                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\"\n" +
+                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\" ; wsl --shutdown\n" +
                     "```\n\n" +
-                    "#### Step 2: Restart WSL2 Subsystem\n" +
-                    "Gracefully restart the WSL2 Linux engine supporting Docker Desktop:\n" +
-                    "```powershell\n" +
-                    "wsl --shutdown\n" +
-                    "```";
+                    "#### Step 3: Open Google Chrome to Download the Latest Docker Desktop or WSL Update\n" +
+                    "If the engine fails to boot:\n" +
+                    "1. Open **Google Chrome** and download the latest **WSL2 Linux Kernel Update** from Microsoft's official page: [learn.microsoft.com/en-us/windows/wsl/install](https://learn.microsoft.com/en-us/windows/wsl/install).\n" +
+                    "2. Reinstall Docker Desktop from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop).";
             newSteps.add(new RawDiagnosticStep(
-                    "Grant User ACL on Docker Config & Named Pipe",
-                    "Grants your user full access permissions to Docker CLI configs and communication pipes.",
-                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\""
-            ));
-            newSteps.add(new RawDiagnosticStep(
-                    "Restart WSL2 Subsystem Engine",
-                    "Gracefully terminates and re-initializes the WSL2 Linux kernel supporting the Docker runtime.",
-                    "wsl --shutdown"
+                    "Grant User ACL on Docker Config & Restart WSL",
+                    "Grant full user access to config.json and gracefully restart WSL2.",
+                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\" ; wsl --shutdown"
             ));
         }
-        // 7. Git / SSH / Version Control Access
+        // 8. Git / SSH / Version Control Access
         else if (text.contains("git") || text.contains("ssh") || text.contains("publickey") || text.contains("push rejected")) {
             citation = "SOP-DEV-018: Enterprise Git & SSH Key Configuration.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
                     "A **`Permission denied (publickey)`** error means your local SSH agent cannot locate your private key or your public key has not been added to your remote repository account (GitHub / GitLab).\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Test SSH Handshake\n" +
-                    "Test whether your local SSH agent can establish a secure handshake with the remote host:\n" +
-                    "```powershell\n" +
-                    "ssh -vT git@github.com\n" +
-                    "```\n\n" +
-                    "#### Step 2: Retrieve and Copy Your Public Key\n" +
-                    "Display your SSH public key so you can copy and add it to your account settings:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Retrieve and Copy Your Local SSH Public Key\n" +
+                    "Run this command to display your public key:\n" +
                     "```powershell\n" +
                     "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\", \"$env:USERPROFILE\\.ssh\\id_rsa.pub\" -ErrorAction SilentlyContinue\n" +
+                    "```\n\n" +
+                    "#### Step 2: Open Google Chrome and Add Key to GitHub/GitLab\n" +
+                    "1. Copy the public key text starting with `ssh-ed25519` or `ssh-rsa`.\n" +
+                    "2. Open **Google Chrome** and go to [github.com/settings/keys](https://github.com/settings/keys).\n" +
+                    "3. Click **New SSH key**, paste your key, and click **Add SSH key**.\n\n" +
+                    "#### Step 3: Test the Connection\n" +
+                    "```powershell\n" +
+                    "ssh -vT git@github.com\n" +
                     "```";
             newSteps.add(new RawDiagnosticStep(
-                    "Test SSH Handshake with GitHub",
-                    "Test whether your local SSH agent can establish a secure handshake with the remote repository.",
-                    "ssh -vT git@github.com"
-            ));
-            newSteps.add(new RawDiagnosticStep(
-                    "Display Your Local SSH Public Key to Add to Account",
-                    "Copy your public key output below, go to your GitHub/GitLab Settings > SSH Keys, and paste it.",
-                    "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\", \"$env:USERPROFILE\\.ssh\\id_rsa.pub\" -ErrorAction SilentlyContinue"
+                    "Display SSH Public Key & Add to Account via Chrome",
+                    "Open Chrome to GitHub/GitLab Settings > SSH Keys and paste your key.",
+                    "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\" -ErrorAction SilentlyContinue"
             ));
         }
-        // 8. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
+        // 9. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
         else if (text.contains("bitlocker") || text.contains("tpm") || text.contains("recovery key")) {
             citation = "SOP-SEC-003: Azure AD Intune BitLocker & TPM Diagnostics.pdf";
             reply = "### 🔍 BitLocker Recovery Instructions\n" +
                     "When Windows prompts for a 48-digit BitLocker recovery key, it can be retrieved securely from your company Microsoft Intune account.\n\n" +
                     "---\n\n" +
                     "### 🛠️ How to Retrieve Your Key\n" +
-                    "1. Open **`https://myaccount.microsoft.com/device-list`** in a browser on your phone or another computer.\n" +
-                    "2. Locate your laptop name and click **View BitLocker Keys**.\n" +
-                    "3. Enter the 48-digit numerical key into the BitLocker prompt.\n\n" +
-                    "To check the BitLocker volume status in PowerShell:\n" +
-                    "```powershell\n" +
-                    "Get-BitLockerVolume -MountPoint 'C:'\n" +
-                    "```";
+                    "1. Open **Google Chrome** on your mobile phone or another computer.\n" +
+                    "2. Navigate to **`https://myaccount.microsoft.com/device-list`**.\n" +
+                    "3. Sign in with your corporate Microsoft work account.\n" +
+                    "4. Locate your laptop name and click **View BitLocker Keys**.\n" +
+                    "5. Enter the 48-digit numerical key into the BitLocker prompt on your laptop.";
             newSteps.add(new RawDiagnosticStep(
                     "Retrieve BitLocker Key from Corporate Device Portal",
-                    "Open https://myaccount.microsoft.com/device-list in a browser (or phone), locate your laptop name, and click 'View BitLocker Keys'.",
+                    "Open https://myaccount.microsoft.com/device-list in a browser (or phone) and click View BitLocker Keys.",
                     "Get-BitLockerVolume -MountPoint 'C:'"
             ));
         }
-        // 9. VPN & General Network Connectivity
-        else if (text.contains("vpn") || text.contains("network") || text.contains("globalprotect") || text.contains("disconnect") || text.contains("wifi") || text.contains("wi-fi")) {
+        // 10. VPN & General Network Connectivity
+        else if (text.contains("vpn") || text.contains("network") || text.contains("globalprotect") || text.contains("disconnect")) {
             citation = "SOP-NET-014: Corporate VPN & Remote Access Protocol.pdf (Section 3.2)";
             if (existingSteps.isEmpty()) {
-                reply = "### 🔍 Root Cause Analysis\n" +
-                        "Frequent VPN drops and remote connection timeouts usually stem from **carrier UDP keepalive expiry**, **MTU fragmentation**, or a stale **DNS route cache**.\n\n" +
+                reply = "### 🔍 What Might Be Happening\n" +
+                        "Frequent VPN disconnections usually happen due to home Wi-Fi MTU fragmentation, local DNS lease expiry, or residential firewall timeout rules.\n\n" +
                         "---\n\n" +
-                        "### 🛠️ Step-by-Step Fixes\n\n" +
-                        "#### Step 1: Force SSL Tunnel Encapsulation (TCP 443)\n" +
-                        "Switch from IPsec UDP to TCP 443 to bypass residential ISP firewall timeouts:\n" +
-                        "```powershell\n" +
-                        "Set-GPConfig -EnforceTunnel 'SSL-TCP-443' -AutoReconnect $true\n" +
-                        "```\n\n" +
-                        "#### Step 2: Flush DNS & Refresh DHCP Lease\n" +
-                        "Clear stale route tables and acquire a fresh IP lease:\n" +
+                        "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                        "#### Step 1: Check VPN Client Settings\n" +
+                        "1. Open your VPN client (e.g. **GlobalProtect** or **Cisco AnyConnect**) from your system tray.\n" +
+                        "2. Click the **Settings (Gear)** icon > **Troubleshooting**.\n" +
+                        "3. Change the connection mode from **IPsec UDP** to **SSL Tunnel (TCP 443)**.\n\n" +
+                        "#### Step 2: Flush DNS and Renew IP in Windows\n" +
+                        "Run this command to clear stale routing tables:\n" +
                         "```powershell\n" +
                         "ipconfig /flushdns ; ipconfig /renew\n" +
-                        "```";
+                        "```\n\n" +
+                        "#### Step 3: Restart Your Home Wi-Fi Router\n" +
+                        "- Unplug your home router for 30 seconds and plug it back in to refresh your broadband gateway connection.";
                 newSteps.add(new RawDiagnosticStep(
-                        "Force SSL Tunnel Encapsulation (TCP 443)",
-                        "Open GlobalProtect Settings > Troubleshooting > Toggle 'Prefer SSL Tunnel over IPsec'. Alternatively execute the command below in PowerShell.",
-                        "Set-GPConfig -EnforceTunnel 'SSL-TCP-443' -AutoReconnect $true"
-                ));
-                newSteps.add(new RawDiagnosticStep(
-                        "Flush DNS Cache & Refresh DHCP Lease",
-                        "Run the diagnostic command below to flush stale route entries and refresh local DNS mappings.",
+                        "Switch VPN Tunnel Mode & Flush DNS",
+                        "Change VPN mode to SSL TCP 443 and run ipconfig /flushdns.",
                         "ipconfig /flushdns ; ipconfig /renew"
                 ));
             } else {
                 reply = "### 🔍 Gateway MTU Diagnostic\n" +
-                        "Since the primary tunnel reset did not fully stabilize your connection, let's verify local gateway packet loss and MTU fragmentation thresholds:\n\n" +
+                        "Since the initial reset did not stabilize your VPN, let's verify local gateway packet loss and MTU fragmentation thresholds:\n\n" +
                         "```powershell\n" +
                         "ping -f -l 1472 8.8.8.8\n" +
                         "```";
@@ -720,33 +821,27 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 ));
             }
         }
-        // 10. Outlook & Application Software
+        // 11. Outlook & Application Software
         else if (text.contains("outlook") || text.contains("email") || text.contains("teams") || text.contains("office") || text.contains("excel") || text.contains("word") || text.contains("0x8004")) {
             citation = "SOP-APP-009: Microsoft 365 Outlook & Teams Diagnostic SOP.docx";
             if (existingSteps.isEmpty()) {
-                reply = "### 🔍 Root Cause Analysis\n" +
-                        "Outlook profile errors and 'Loading Profile' freezes are commonly caused by a locked offline cache container (`.ost`) or corrupted COM add-ins.\n\n" +
+                reply = "### 🔍 What Might Be Happening\n" +
+                        "Outlook freezes, profile errors, or 'Loading Profile' hangups are typically caused by a corrupted offline data cache (`.ost`) or buggy third-party COM add-ins.\n\n" +
                         "---\n\n" +
-                        "### 🛠️ Step-by-Step Fixes\n\n" +
-                        "#### Step 1: Clean Reminders & Clear Cached OST Files\n" +
-                        "Close Outlook and clear stale cache locks:\n" +
-                        "```powershell\n" +
-                        "outlook.exe /cleanreminders ; Remove-Item \"$env:LOCALAPPDATA\\Microsoft\\Outlook\\*.ost\" -ErrorAction SilentlyContinue\n" +
-                        "```\n\n" +
-                        "#### Step 2: Launch Outlook in Safe Mode\n" +
-                        "Bypass all third-party add-ins and cached graphics acceleration:\n" +
-                        "```powershell\n" +
-                        "outlook.exe /safe\n" +
-                        "```";
+                        "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                        "#### Step 1: Open Outlook in Safe Mode\n" +
+                        "1. Press **`Windows Key + R`** on your keyboard to open the Run box.\n" +
+                        "2. Type **`outlook.exe /safe`** and press Enter.\n" +
+                        "3. If Outlook opens cleanly in Safe Mode, a third-party add-in is the cause. Go to **File** > **Options** > **Add-ins** > click **Go** and disable unnecessary add-ins.\n\n" +
+                        "#### Step 2: Run Quick Repair in Windows Settings\n" +
+                        "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                        "2. Go to **Apps** > **Installed apps**.\n" +
+                        "3. Find **Microsoft 365 (Office)**, click the three dots (`...`), and select **Modify**.\n" +
+                        "4. Choose **Quick Repair** and click **Repair**.";
                 newSteps.add(new RawDiagnosticStep(
-                        "Clean Reminders & Rebuild Outlook Cache",
-                        "Close Outlook and run the repair command to recreate the cached OST container safely.",
-                        "outlook.exe /cleanreminders ; Remove-Item \"$env:LOCALAPPDATA\\Microsoft\\Outlook\\*.ost\" -ErrorAction SilentlyContinue"
-                ));
-                newSteps.add(new RawDiagnosticStep(
-                        "Verify Autodiscover Endpoint Connectivity",
-                        "Test that your computer can reach the corporate Microsoft 365 Autodiscover service.",
-                        "Test-NetConnection -ComputerName 'autodiscover.office365.com' -Port 443"
+                        "Launch Outlook in Safe Mode",
+                        "Press Win + R, type outlook.exe /safe and press Enter to bypass buggy add-ins.",
+                        "outlook.exe /safe"
                 ));
             } else {
                 reply = "### 🔍 Safe Mode Diagnostic\n" +
@@ -761,27 +856,34 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 ));
             }
         }
-        // 11. System Sluggishness & High Resource Usage
+        // 12. System Sluggishness & High Resource Usage
         else if (text.contains("slow") || text.contains("freeze") || text.contains("high cpu") || text.contains("ram") || text.contains("memory") || text.contains("hang")) {
             citation = "SOP-SYS-004: Windows Performance Optimization & Diagnostics.pdf";
-            reply = "### 🔍 Root Cause Analysis\n" +
-                    "System sluggishness and freezing are typically caused by runaway background processes, memory leaks, or corrupted Windows system binaries.\n\n" +
+            reply = "### 🔍 What Might Be Happening\n" +
+                    "System slowdowns and freezing are usually caused by a background app consuming 100% CPU/RAM, full disk storage, or pending Windows updates.\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Step-by-Step Fixes\n\n" +
-                    "#### Step 1: Identify High-Resource Processes\n" +
-                    "Query the top 5 processes consuming the highest CPU and memory:\n" +
-                    "```powershell\n" +
-                    "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, CPU, WorkingSet64\n" +
-                    "```\n\n" +
-                    "#### Step 2: Run System File Checker (SFC)\n" +
-                    "Scan Windows core files for corruption and auto-repair them:\n" +
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Check Task Manager for Runaway Apps\n" +
+                    "1. Press **`Ctrl + Shift + Esc`** on your keyboard to open **Task Manager**.\n" +
+                    "2. Click on the **Processes** tab and click on the **CPU** or **Memory** header to sort apps by highest usage.\n" +
+                    "3. If you see an app (like Chrome, Teams, or an unknown process) taking 80-100% of resources, click on it and click **End task** in the top-right corner.\n\n" +
+                    "#### Step 2: Go to Windows Settings and Clear Temporary Storage\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Storage**.\n" +
+                    "3. Click on **Temporary files**, check **Temporary files** and **DirectX Shader Cache**, and click **Remove files**.\n" +
+                    "4. Make sure **Storage Sense** is toggled **ON** to automatically free up cache in the future.\n\n" +
+                    "#### Step 3: Check Windows Update in Settings\n" +
+                    "1. In **Settings**, click on **Windows Update** in the left sidebar.\n" +
+                    "2. Click **Check for updates** and let Windows install any pending cumulative patches.\n" +
+                    "3. Restart your laptop once updates finish installing.\n\n" +
+                    "*(Optional Quick Command: Run a system file integrity check in PowerShell as Administrator):*\n" +
                     "```powershell\n" +
                     "sfc /scannow\n" +
                     "```";
             newSteps.add(new RawDiagnosticStep(
-                    "Identify High-Resource Processes",
-                    "Lists the top processes currently consuming CPU and memory.",
-                    "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, CPU, WorkingSet64"
+                    "Check Task Manager & Clear Storage in Settings",
+                    "Open Task Manager (Ctrl+Shift+Esc) to close runaway apps, and go to Settings > System > Storage to delete temporary files.",
+                    "ms-settings:storagesense"
             ));
             newSteps.add(new RawDiagnosticStep(
                     "Scan System Integrity (SFC Scan)",
@@ -789,32 +891,36 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "sfc /scannow"
             ));
         }
-        // 12. General Technical Inquiry (Fallback)
+        // 13. General Technical Inquiry (Fallback)
         else {
             citation = "SOP-GEN-001: General Enterprise IT Diagnostic Standard.pdf";
-            reply = "### 🔍 Baseline Diagnostic Check\n" +
-                    "I've received your inquiry. To pinpoint the exact failure point, let's run a baseline system and network check:\n\n" +
+            reply = "### 🔍 Diagnostic Guidance\n" +
+                    "I've received your inquiry. To resolve this issue quickly, let's follow standard IT resolution steps:\n\n" +
                     "---\n\n" +
-                    "### 🛠️ Diagnostic Steps\n\n" +
-                    "#### Step 1: Inspect Recent Windows Error Logs\n" +
-                    "Check recent critical system and hardware errors recorded in the event log:\n" +
-                    "```powershell\n" +
-                    "Get-EventLog -LogName System -EntryType Error -Newest 5\n" +
-                    "```\n\n" +
-                    "#### Step 2: Verify Gateway & DNS Connectivity\n" +
-                    "Test outbound network and DNS resolution:\n" +
-                    "```powershell\n" +
-                    "Test-NetConnection -ComputerName '1.1.1.1' -Port 53\n" +
-                    "```";
+                    "### 🛠️ Step-by-Step Resolution Guide\n\n" +
+                    "#### Step 1: Run the Windows Built-in Troubleshooter in Settings\n" +
+                    "1. Press **`Windows Key + I`** to open **Settings**.\n" +
+                    "2. Go to **System** > **Troubleshoot** > **Other troubleshooters**.\n" +
+                    "3. Find the category matching your issue (such as Network, Audio, Bluetooth, Printer, or Power) and click **Run**.\n" +
+                    "4. Follow the on-screen prompts to apply the automatic fix.\n\n" +
+                    "#### Step 2: Check Device Manager for Hardware Errors\n" +
+                    "1. Press **`Windows Key + X`** and choose **Device Manager**.\n" +
+                    "2. Look for any category with a yellow exclamation point (`⚠️`) or downward arrow (`⬇️`).\n" +
+                    "3. Right-click the affected item, choose **Enable device** or **Update driver**.\n\n" +
+                    "#### Step 3: Open Google Chrome and Update Manufacturer Drivers\n" +
+                    "1. Open **Google Chrome** and visit your laptop brand's support site (Dell Support, HP Support, or Lenovo Support).\n" +
+                    "2. Enter your serial number or Service Tag, click **Drivers & Downloads**, and run the **Automatic Driver Scan** to install all missing firmware and drivers.\n\n" +
+                    "#### Step 4: Restart Your Computer\n" +
+                    "- Click the **Start menu** > click the **Power** icon > select **Restart** (this clears temporary system memory and reloads all hardware device drivers).";
             newSteps.add(new RawDiagnosticStep(
-                    "Inspect Recent System Error Events",
-                    "Queries the Windows Event Log for recent critical hardware, service, or driver failures.",
-                    "Get-EventLog -LogName System -EntryType Error -Newest 5"
+                    "Run Windows Troubleshooter in Settings",
+                    "Press Win + I > System > Troubleshoot > Other troubleshooters > Run the appropriate diagnostic tool.",
+                    "ms-settings:troubleshoot"
             ));
             newSteps.add(new RawDiagnosticStep(
-                    "Verify Corporate Gateway Connectivity",
-                    "Confirms network connectivity and DNS resolution.",
-                    "Test-NetConnection -ComputerName '1.1.1.1' -Port 53"
+                    "Check Device Manager & Restart Computer",
+                    "Press Win + X > Device Manager to inspect driver states, then perform a clean computer restart.",
+                    "devmgmt.msc"
             ));
         }
 
