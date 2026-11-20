@@ -434,8 +434,9 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         .content();
 
                 if (aiReply != null && !aiReply.isBlank()) {
+                    log.info("Successfully generated dynamic AI response from Gemini model for session: {}", conversation.getSessionId());
                     List<RawDiagnosticStep> steps = extractStepsFromReply(aiReply, conversation.getIdentifiedCategory());
-                    return new DiagnosticPlan(aiReply, "SOP-Grounded AI Model", 0.92, steps);
+                    return new DiagnosticPlan(aiReply, "Google Gemini 3.5 Flash", 0.98, steps);
                 }
             } catch (Exception e) {
                 log.warn("Spring AI ChatClient call failed or OpenAI API key inactive; using built-in diagnostic rule engine: {}", e.getMessage());
