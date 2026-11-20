@@ -472,56 +472,111 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 1. Cursor / Touchpad / Mouse Issues
         if (text.contains("cursor") || text.contains("touchpad") || text.contains("trackpad") || text.contains("mouse") || text.contains("pointer")) {
             citation = "SOP-HW-012: Laptop Touchpad & Pointer Troubleshooting Guide.pdf";
-            reply = "I've analyzed your input hardware symptoms. A missing or unresponsive cursor on a laptop is typically caused by an accidental Fn touchpad hardware lock, an inverted Windows gesture toggle, or a suspended I2C/HID pointer driver. Let's resolve this step-by-step:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "A missing or frozen mouse cursor on a laptop is almost always caused by an **accidental Fn hardware lock** or a suspended **Windows I2C/HID pointer driver**.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Check Laptop Touchpad Function Lock Key\n" +
+                    "Most laptops (Dell, Lenovo, HP, Asus) have a dedicated shortcut key to disable/enable the touchpad:\n" +
+                    "- Press **`Fn + F6`**, **`Fn + F7`**, **`Fn + F9`**, or **`Fn + F10`** (look for the trackpad icon with a slash through it).\n" +
+                    "- On HP and Dell laptops, try **double-tapping the top-left sensor dot** on the touchpad.\n" +
+                    "- You can also open the Windows Mouse properties directly by running:\n" +
+                    "```powershell\n" +
+                    "main.cpl\n" +
+                    "```\n\n" +
+                    "#### Step 2: Restart Pointer Drivers in Device Manager\n" +
+                    "If the cursor is still not visible, force Windows to rescan the hardware bus and restart the pointing device driver:\n" +
+                    "```powershell\n" +
+                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Toggle Laptop Touchpad Function Lock (Fn Key)",
-                    "Most enterprise laptops (Dell, Lenovo, HP, Asus) have a physical touchpad toggle. Try pressing Fn + F6, Fn + F7, Fn + F9, or Fn + F10 (look for the trackpad icon with a slash), or double-tap the top-left corner of the trackpad to re-enable it.",
+                    "Try pressing Fn + F6, Fn + F7, Fn + F9, or double-tapping the trackpad sensor dot.",
                     "main.cpl"
             ));
             newSteps.add(new RawDiagnosticStep(
                     "Restart Mouse & Pointer Hardware Driver (HID)",
                     "Scan the hardware bus and restart the pointing device driver in Windows Device Manager.",
-                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue"
+                    "pnputil /scan-devices ; Get-PnpDevice -Class 'Mouse' | Restart-PnpDevice -Confirm:$false"
             ));
         }
         // 2. Wi-Fi Missing / Disabled / Adapter Gone
         else if ((text.contains("wifi") || text.contains("wi-fi") || text.contains("wlan")) && 
                  (text.contains("gone") || text.contains("missing") || text.contains("not there") || text.contains("no wifi") || text.contains("disabled") || text.contains("disappeared"))) {
             citation = "SOP-NET-008: Windows WLAN Adapter & Service Recovery.pdf";
-            reply = "I've diagnosed your wireless network issue. When the Wi-Fi icon or toggle disappears completely from Windows, the network adapter is usually software-disabled, stuck in Airplane Mode, or the Windows WLAN AutoConfig service has stopped. Let's restore your Wi-Fi interface:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "When the Wi-Fi icon or toggle vanishes completely from Windows, it indicates the network adapter is **software-disabled**, stuck in **Airplane Mode**, or the **Windows WLAN AutoConfig service (`WlanSvc`)** has stopped.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Force-Enable All Wireless Adapters\n" +
+                    "Run this command in PowerShell to clear software disable flags and re-enable your Wi-Fi interface:\n" +
+                    "```powershell\n" +
+                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false\n" +
+                    "```\n\n" +
+                    "#### Step 2: Restart the Windows WLAN AutoConfig Service\n" +
+                    "Restarting `WlanSvc` forces Windows to rebuild the network card enumeration and restores the Wi-Fi icon in your system tray:\n" +
+                    "```powershell\n" +
+                    "Restart-Service -Name WlanSvc -Force ; netsh winsock reset\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Force Enable Wi-Fi Adapter & Clear Adapter Disable",
-                    "Execute the command below in PowerShell to re-enable all wireless network adapters and clear administrative blocks.",
-                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false -ErrorAction SilentlyContinue"
+                    "Execute netsh and Enable-NetAdapter to re-enable all wireless network adapters.",
+                    "netsh interface set interface \"Wi-Fi\" admin=enabled ; Enable-NetAdapter -Name \"*Wi-Fi*\" -Confirm:$false"
             ));
             newSteps.add(new RawDiagnosticStep(
                     "Restart Windows WLAN AutoConfig Service (WlanSvc)",
-                    "WlanSvc manages wireless discovery and network card enumeration. Restarting it restores the Wi-Fi tray icon and available networks list.",
+                    "WlanSvc manages wireless discovery. Restarting it restores the Wi-Fi tray icon and available networks list.",
                     "Restart-Service -Name WlanSvc -Force ; netsh winsock reset"
             ));
         }
         // 3. Audio / Sound / Microphone Issues
         else if (text.contains("audio") || text.contains("sound") || text.contains("speaker") || text.contains("headset") || text.contains("mic") || text.contains("volume")) {
             citation = "SOP-HW-015: Windows Audio Service & Endpoint Diagnostics.pdf";
-            reply = "I've evaluated your audio hardware prompt. Missing audio outputs or microphone dropouts typically occur when the Windows Audio Endpoint Builder hangs. Let's restart the audio engine:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "Missing audio outputs or microphone dropouts typically occur when the **Windows Audio Endpoint Builder** hangs or the active playback stream desynchronizes.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Restart Core Windows Audio Services\n" +
+                    "Restarts `AudioSrv` and `AudioEndpointBuilder` to reload all playback and recording streams without requiring a computer reboot:\n" +
+                    "```powershell\n" +
+                    "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force\n" +
+                    "```\n\n" +
+                    "#### Step 2: Rescan Audio Hardware\n" +
+                    "Forces Windows to re-enumerate all 3.5mm jacks, USB headsets, and HDMI audio outputs:\n" +
+                    "```powershell\n" +
+                    "pnputil /scan-devices\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Restart Core Windows Audio Services",
-                    "Restarts AudioSrv and AudioEndpointBuilder to reload all playback and recording streams without requiring a computer reboot.",
+                    "Restarts AudioSrv and AudioEndpointBuilder to reload all playback streams.",
                     "Restart-Service -Name Audiosrv, AudioEndpointBuilder -Force"
             ));
             newSteps.add(new RawDiagnosticStep(
                     "Rescan and Enumerate Audio Hardware Devices",
-                    "Forces Windows Plug-and-Play manager to re-detect connected 3.5mm jacks, USB headsets, and Bluetooth devices.",
+                    "Forces Windows Plug-and-Play manager to re-detect connected audio devices.",
                     "pnputil /scan-devices"
             ));
         }
         // 4. Display / Screen / External Monitor / HDMI
         else if (text.contains("screen") || text.contains("display") || text.contains("monitor") || text.contains("hdmi") || text.contains("brightness") || text.contains("second monitor")) {
             citation = "SOP-HW-007: Multi-Display & GPU Driver Recovery.pdf";
-            reply = "I've analyzed your display issue. Screen blackouts, detection failures, or second monitor freezes are usually resolved by restarting the display driver pipeline:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "Screen blackouts, multi-monitor detection failures, or second display freezes are usually resolved by resetting the **Windows graphics driver pipeline** or updating EDID timings.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Trigger GPU Driver Reset Shortcut\n" +
+                    "Press **`Win + Ctrl + Shift + B`** on your keyboard (the screen will briefly flicker and beep). Then execute the projection command to extend your desktop:\n" +
+                    "```powershell\n" +
+                    "displayswitch.exe /extend\n" +
+                    "```\n\n" +
+                    "#### Step 2: Re-Detect Connected Monitors via WMI\n" +
+                    "Query attached displays and clear stale display cache:\n" +
+                    "```powershell\n" +
+                    "Get-WmiObject -Namespace root\\wmi -Class WmiMonitorID\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Trigger Windows GPU Driver Reset",
-                    "Press Win + Ctrl + Shift + B on your keyboard (the screen will briefly flicker and beep). Then execute the projection command below to extend your desktop.",
+                    "Press Win + Ctrl + Shift + B on your keyboard, then run displayswitch.",
                     "displayswitch.exe /extend"
             ));
             newSteps.add(new RawDiagnosticStep(
@@ -533,7 +588,15 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 5. Bluetooth Issues
         else if (text.contains("bluetooth") || text.contains("bt ")) {
             citation = "SOP-HW-019: Windows Bluetooth Stack Recovery.pdf";
-            reply = "I've analyzed your Bluetooth connection issue. Let's restart the Bluetooth Discovery & Support service:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "When Bluetooth devices fail to pair or disconnect, the **Windows Bluetooth Support Service (`bthserv`)** cache has usually become corrupted.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Restart Bluetooth Service\n" +
+                    "Restarts the background Bluetooth service and resets the peripheral handshake:\n" +
+                    "```powershell\n" +
+                    "Restart-Service -Name bthserv -Force\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Restart Bluetooth Support Service (bthserv)",
                     "Restarts the Windows Bluetooth background engine and clears stuck peripheral pairing caches.",
@@ -543,7 +606,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 6. Docker Desktop & Container Engines
         else if (text.contains("docker") || text.contains("wsl") || text.contains("container")) {
             citation = "SOP-DEV-022: Windows Docker Desktop & WSL2 Permissions.pdf";
-            reply = "I've diagnosed your Docker environment fault. This typically happens when non-elevated terminals lack ACL socket permissions or the WSL2 kernel is stopped:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "Docker Desktop socket and startup errors (such as EACCES on named pipe) occur when terminal processes lack **ACL socket permissions** or the **WSL2 Linux distribution** is in a stopped state.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Grant Full ACL Permissions to Docker Config\n" +
+                    "Run the permission grant command to give your user full access to Docker configurations:\n" +
+                    "```powershell\n" +
+                    "icacls \"$env:USERPROFILE\\.docker\\config.json\" /grant \"${env:USERNAME}:F\"\n" +
+                    "```\n\n" +
+                    "#### Step 2: Restart WSL2 Subsystem\n" +
+                    "Gracefully restart the WSL2 Linux engine supporting Docker Desktop:\n" +
+                    "```powershell\n" +
+                    "wsl --shutdown\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Grant User ACL on Docker Config & Named Pipe",
                     "Grants your user full access permissions to Docker CLI configs and communication pipes.",
@@ -558,7 +634,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 7. Git / SSH / Version Control Access
         else if (text.contains("git") || text.contains("ssh") || text.contains("publickey") || text.contains("push rejected")) {
             citation = "SOP-DEV-018: Enterprise Git & SSH Key Configuration.pdf";
-            reply = "I've analyzed your version control access error. 'Permission denied (publickey)' indicates the SSH agent cannot find a matching private key or the public key has not been added to your GitHub/GitLab account:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "A **`Permission denied (publickey)`** error means your local SSH agent cannot locate your private key or your public key has not been added to your remote repository account (GitHub / GitLab).\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Test SSH Handshake\n" +
+                    "Test whether your local SSH agent can establish a secure handshake with the remote host:\n" +
+                    "```powershell\n" +
+                    "ssh -vT git@github.com\n" +
+                    "```\n\n" +
+                    "#### Step 2: Retrieve and Copy Your Public Key\n" +
+                    "Display your SSH public key so you can copy and add it to your account settings:\n" +
+                    "```powershell\n" +
+                    "Get-Content \"$env:USERPROFILE\\.ssh\\id_ed25519.pub\", \"$env:USERPROFILE\\.ssh\\id_rsa.pub\" -ErrorAction SilentlyContinue\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Test SSH Handshake with GitHub",
                     "Test whether your local SSH agent can establish a secure handshake with the remote repository.",
@@ -573,7 +662,17 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 8. BitLocker & TPM (ONLY when specifically asking about BitLocker/TPM/Recovery Key)
         else if (text.contains("bitlocker") || text.contains("tpm") || text.contains("recovery key")) {
             citation = "SOP-SEC-003: Azure AD Intune BitLocker & TPM Diagnostics.pdf";
-            reply = "I've evaluated your BitLocker recovery request against our Azure AD device management SOP. You can retrieve your 48-digit recovery key securely through Microsoft Intune:";
+            reply = "### 🔍 BitLocker Recovery Instructions\n" +
+                    "When Windows prompts for a 48-digit BitLocker recovery key, it can be retrieved securely from your company Microsoft Intune account.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ How to Retrieve Your Key\n" +
+                    "1. Open **`https://myaccount.microsoft.com/device-list`** in a browser on your phone or another computer.\n" +
+                    "2. Locate your laptop name and click **View BitLocker Keys**.\n" +
+                    "3. Enter the 48-digit numerical key into the BitLocker prompt.\n\n" +
+                    "To check the BitLocker volume status in PowerShell:\n" +
+                    "```powershell\n" +
+                    "Get-BitLockerVolume -MountPoint 'C:'\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Retrieve BitLocker Key from Corporate Device Portal",
                     "Open https://myaccount.microsoft.com/device-list in a browser (or phone), locate your laptop name, and click 'View BitLocker Keys'.",
@@ -584,7 +683,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         else if (text.contains("vpn") || text.contains("network") || text.contains("globalprotect") || text.contains("disconnect") || text.contains("wifi") || text.contains("wi-fi")) {
             citation = "SOP-NET-014: Corporate VPN & Remote Access Protocol.pdf (Section 3.2)";
             if (existingSteps.isEmpty()) {
-                reply = "I've analyzed your network connectivity issue against our Palo Alto GlobalProtect and Wi-Fi SOPs. Frequent drops on home Wi-Fi typically occur when carrier UDP keepalives expire or MTU packets fragment. Let's start with non-destructive network reconfiguration:";
+                reply = "### 🔍 Root Cause Analysis\n" +
+                        "Frequent VPN drops and remote connection timeouts usually stem from **carrier UDP keepalive expiry**, **MTU fragmentation**, or a stale **DNS route cache**.\n\n" +
+                        "---\n\n" +
+                        "### 🛠️ Step-by-Step Fixes\n\n" +
+                        "#### Step 1: Force SSL Tunnel Encapsulation (TCP 443)\n" +
+                        "Switch from IPsec UDP to TCP 443 to bypass residential ISP firewall timeouts:\n" +
+                        "```powershell\n" +
+                        "Set-GPConfig -EnforceTunnel 'SSL-TCP-443' -AutoReconnect $true\n" +
+                        "```\n\n" +
+                        "#### Step 2: Flush DNS & Refresh DHCP Lease\n" +
+                        "Clear stale route tables and acquire a fresh IP lease:\n" +
+                        "```powershell\n" +
+                        "ipconfig /flushdns ; ipconfig /renew\n" +
+                        "```";
                 newSteps.add(new RawDiagnosticStep(
                         "Force SSL Tunnel Encapsulation (TCP 443)",
                         "Open GlobalProtect Settings > Troubleshooting > Toggle 'Prefer SSL Tunnel over IPsec'. Alternatively execute the command below in PowerShell.",
@@ -596,7 +708,11 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         "ipconfig /flushdns ; ipconfig /renew"
                 ));
             } else {
-                reply = "Since the primary tunnel reset did not fully stabilize your connection, let's verify local gateway packet loss and MTU fragmentation thresholds:";
+                reply = "### 🔍 Gateway MTU Diagnostic\n" +
+                        "Since the primary tunnel reset did not fully stabilize your connection, let's verify local gateway packet loss and MTU fragmentation thresholds:\n\n" +
+                        "```powershell\n" +
+                        "ping -f -l 1472 8.8.8.8\n" +
+                        "```";
                 newSteps.add(new RawDiagnosticStep(
                         "Test Gateway MTU Threshold & Latency",
                         "Execute ping with the Don't Fragment flag to detect router MTU packet drops.",
@@ -608,7 +724,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         else if (text.contains("outlook") || text.contains("email") || text.contains("teams") || text.contains("office") || text.contains("excel") || text.contains("word") || text.contains("0x8004")) {
             citation = "SOP-APP-009: Microsoft 365 Outlook & Teams Diagnostic SOP.docx";
             if (existingSteps.isEmpty()) {
-                reply = "I've reviewed Microsoft 365 profile diagnostics for error code 0x8004010F. This error is commonly triggered when the offline Outlook Data File (.ost) header becomes locked or the default profile store desynchronizes. Let's verify and repair your profile:";
+                reply = "### 🔍 Root Cause Analysis\n" +
+                        "Outlook profile errors and 'Loading Profile' freezes are commonly caused by a locked offline cache container (`.ost`) or corrupted COM add-ins.\n\n" +
+                        "---\n\n" +
+                        "### 🛠️ Step-by-Step Fixes\n\n" +
+                        "#### Step 1: Clean Reminders & Clear Cached OST Files\n" +
+                        "Close Outlook and clear stale cache locks:\n" +
+                        "```powershell\n" +
+                        "outlook.exe /cleanreminders ; Remove-Item \"$env:LOCALAPPDATA\\Microsoft\\Outlook\\*.ost\" -ErrorAction SilentlyContinue\n" +
+                        "```\n\n" +
+                        "#### Step 2: Launch Outlook in Safe Mode\n" +
+                        "Bypass all third-party add-ins and cached graphics acceleration:\n" +
+                        "```powershell\n" +
+                        "outlook.exe /safe\n" +
+                        "```";
                 newSteps.add(new RawDiagnosticStep(
                         "Clean Reminders & Rebuild Outlook Cache",
                         "Close Outlook and run the repair command to recreate the cached OST container safely.",
@@ -620,7 +749,11 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         "Test-NetConnection -ComputerName 'autodiscover.office365.com' -Port 443"
                 ));
             } else {
-                reply = "If the profile reset did not clear the store lock, let's launch Outlook in Safe Mode with hardware acceleration disabled:";
+                reply = "### 🔍 Safe Mode Diagnostic\n" +
+                        "If the profile reset did not clear the store lock, let's launch Outlook in Safe Mode with hardware acceleration disabled:\n\n" +
+                        "```powershell\n" +
+                        "outlook.exe /safe\n" +
+                        "```";
                 newSteps.add(new RawDiagnosticStep(
                         "Start Outlook in Verified Safe Mode",
                         "Launches Outlook with all COM add-ins and cached hardware acceleration hooks bypassed.",
@@ -631,7 +764,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 11. System Sluggishness & High Resource Usage
         else if (text.contains("slow") || text.contains("freeze") || text.contains("high cpu") || text.contains("ram") || text.contains("memory") || text.contains("hang")) {
             citation = "SOP-SYS-004: Windows Performance Optimization & Diagnostics.pdf";
-            reply = "Let's identify what is causing your system slowdown:";
+            reply = "### 🔍 Root Cause Analysis\n" +
+                    "System sluggishness and freezing are typically caused by runaway background processes, memory leaks, or corrupted Windows system binaries.\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Step-by-Step Fixes\n\n" +
+                    "#### Step 1: Identify High-Resource Processes\n" +
+                    "Query the top 5 processes consuming the highest CPU and memory:\n" +
+                    "```powershell\n" +
+                    "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, CPU, WorkingSet64\n" +
+                    "```\n\n" +
+                    "#### Step 2: Run System File Checker (SFC)\n" +
+                    "Scan Windows core files for corruption and auto-repair them:\n" +
+                    "```powershell\n" +
+                    "sfc /scannow\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Identify High-Resource Processes",
                     "Lists the top processes currently consuming CPU and memory.",
@@ -646,7 +792,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         // 12. General Technical Inquiry (Fallback)
         else {
             citation = "SOP-GEN-001: General Enterprise IT Diagnostic Standard.pdf";
-            reply = "I've reviewed your request. To help identify the root cause quickly, let's run standard baseline diagnostics:";
+            reply = "### 🔍 Baseline Diagnostic Check\n" +
+                    "I've received your inquiry. To pinpoint the exact failure point, let's run a baseline system and network check:\n\n" +
+                    "---\n\n" +
+                    "### 🛠️ Diagnostic Steps\n\n" +
+                    "#### Step 1: Inspect Recent Windows Error Logs\n" +
+                    "Check recent critical system and hardware errors recorded in the event log:\n" +
+                    "```powershell\n" +
+                    "Get-EventLog -LogName System -EntryType Error -Newest 5\n" +
+                    "```\n\n" +
+                    "#### Step 2: Verify Gateway & DNS Connectivity\n" +
+                    "Test outbound network and DNS resolution:\n" +
+                    "```powershell\n" +
+                    "Test-NetConnection -ComputerName '1.1.1.1' -Port 53\n" +
+                    "```";
             newSteps.add(new RawDiagnosticStep(
                     "Inspect Recent System Error Events",
                     "Queries the Windows Event Log for recent critical hardware, service, or driver failures.",

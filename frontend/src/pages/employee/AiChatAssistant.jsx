@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { aiService } from '../../services/aiService';
 import Navbar from '../../components/Navbar';
 import Sidebar from '../../components/Sidebar';
+import MarkdownMessage from '../../components/MarkdownMessage';
 import {
   Bot,
   Sparkles,
@@ -508,139 +509,61 @@ export default function AiChatAssistant() {
                         </div>
                       )}
 
-                      <div className={`max-w-2xl space-y-3 ${isUser ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-3xl w-full space-y-2 ${isUser ? 'items-end' : 'items-start'}`}>
                         {/* Bubble */}
                         <div
-                          className={`p-4 rounded-3xl text-sm leading-relaxed ${
+                          className={`p-4 sm:p-5 rounded-3xl text-sm leading-relaxed ${
                             isUser
-                              ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-violet-600 text-white rounded-tr-xs shadow-md shadow-brand-500/20'
-                              : 'bg-white dark:bg-[#0c1222] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-xs shadow-sm'
+                              ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-violet-600 text-white rounded-tr-xs shadow-md shadow-brand-500/20 ml-auto max-w-xl'
+                              : 'bg-white dark:bg-[#0c1222] border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-xs shadow-sm w-full'
                           }`}
                         >
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                        </div>
+                          {isUser ? (
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          ) : (
+                            <div>
+                              <MarkdownMessage content={msg.content} />
 
-                        {/* Diagnostic Step Cards (Attached to Assistant Message) */}
-                        {!isUser && msg.diagnosticSteps && msg.diagnosticSteps.length > 0 && (
-                          <div className="space-y-3 w-full">
-                            {msg.diagnosticSteps.map((step) => {
-                              const stepKey = step.id || step.stepNumber;
-                              const stepState = activeStepFeedback[stepKey] || (step.status === 'SUCCEEDED' ? 'RESOLVED' : step.status === 'FAILED' ? 'FAILED' : null);
-                              const isStepResolved = stepState === 'RESOLVED';
-                              const isStepFailed = stepState === 'FAILED';
-                              const stepTitle = step.title || step.stepTitle || `Step ${step.stepNumber}`;
-                              const instructions = step.instructions || step.description;
-                              const command = step.commandToRun || step.commandSnippet;
-
-                              return (
-                                <motion.div
-                                  key={stepKey}
-                                  initial={{ opacity: 0, scale: 0.98 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  className={`p-4 rounded-2xl border transition-all ${
-                                    isStepResolved
-                                      ? 'bg-emerald-950/20 border-emerald-500/40'
-                                      : isStepFailed
-                                      ? 'bg-rose-950/20 border-rose-500/30'
-                                      : 'bg-gradient-to-br from-cyan-950/20 via-[#0a0f1d] to-brand-950/20 border-cyan-500/40 shadow-lg shadow-cyan-500/5'
-                                  }`}
-                                >
-                                  {/* Step Header */}
-                                  <div className="flex items-center justify-between gap-3 mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs border border-cyan-500/30">
-                                        {step.stepNumber}
-                                      </span>
-                                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                                        {stepTitle}
-                                      </h4>
-                                    </div>
-                                    <span
-                                      className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                        isStepResolved
-                                          ? 'bg-emerald-500/20 text-emerald-400'
-                                          : isStepFailed
-                                          ? 'bg-rose-500/20 text-rose-400'
-                                          : 'bg-cyan-500/20 text-cyan-300'
-                                      }`}
+                              {/* Clean Conversational Feedback Bar */}
+                              {idx === messages.length - 1 && sessionStatus === 'ACTIVE' && (
+                                <div className="mt-5 pt-3.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    Did this solution help resolve your issue?
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <motion.button
+                                      whileHover={{ scale: 1.03 }}
+                                      whileTap={{ scale: 0.97 }}
+                                      onClick={() => handleStepFeedback(msg.diagnosticSteps?.[0] || { id: 1 }, true)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-sm"
                                     >
-                                      {isStepResolved ? 'Worked' : isStepFailed ? 'Failed' : 'Suggested Action'}
-                                    </span>
+                                      <ThumbsUp className="w-3.5 h-3.5" />
+                                      ✓ Yes, it worked!
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ scale: 1.03 }}
+                                      whileTap={{ scale: 0.97 }}
+                                      onClick={() => handleStepFeedback(msg.diagnosticSteps?.[0] || { id: 1 }, false)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800/80 hover:bg-rose-500/10 text-slate-600 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700/80 hover:border-rose-500/30 transition-all"
+                                    >
+                                      <ThumbsDown className="w-3.5 h-3.5" />
+                                      ✕ Didn't solve it
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ scale: 1.03 }}
+                                      whileTap={{ scale: 0.97 }}
+                                      onClick={() => setIsEscalateModalOpen(true)}
+                                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all"
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                      Escalate to Ticket
+                                    </motion.button>
                                   </div>
-
-                                  {/* Step Description */}
-                                  {instructions && (
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
-                                      {instructions}
-                                    </p>
-                                  )}
-
-                                  {/* CLI Command Box */}
-                                  {command && (
-                                    <div className="relative mb-3 rounded-xl bg-slate-950 border border-slate-800 p-3 font-mono text-xs text-cyan-300 flex items-center justify-between group">
-                                      <div className="flex items-center gap-2 overflow-x-auto pr-8">
-                                        <Terminal className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                                        <span>{command}</span>
-                                      </div>
-                                      <button
-                                        onClick={() => copyToClipboard(command, stepKey)}
-                                        className="absolute right-2 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-sans font-semibold flex items-center gap-1 transition-all"
-                                      >
-                                        {copiedCode === stepKey ? (
-                                          <>
-                                            <Check className="w-3 h-3 text-emerald-400" /> Copied
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Copy className="w-3 h-3" /> Copy
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {/* Expected Output */}
-                                  {step.expectedOutput && (
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 italic mb-3">
-                                      Expected outcome: {step.expectedOutput}
-                                    </p>
-                                  )}
-
-                                  {/* Feedback Buttons */}
-                                  {sessionStatus === 'ACTIVE' && !isStepResolved && (
-                                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200/40 dark:border-slate-800/60">
-                                      <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        disabled={stepState === 'SUBMITTING'}
-                                        onClick={() => handleStepFeedback(step, true)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-sm shadow-emerald-500/20 transition-all disabled:opacity-50"
-                                      >
-                                        {stepState === 'SUBMITTING' ? (
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                          <ThumbsUp className="w-3 h-3" />
-                                        )}
-                                        ✓ It Worked (Resolved)
-                                      </motion.button>
-
-                                      <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        disabled={stepState === 'SUBMITTING'}
-                                        onClick={() => handleStepFeedback(step, false)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 hover:bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/30 transition-all disabled:opacity-50"
-                                      >
-                                        <ThumbsDown className="w-3 h-3" />
-                                        ✕ Didn't Work
-                                      </motion.button>
-                                    </div>
-                                  )}
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Timestamp */}
                         <div
