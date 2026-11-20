@@ -22,7 +22,8 @@ import {
   Clock,
   RotateCw,
   KeyRound,
-  Edit3
+  Edit3,
+  Check
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -77,10 +78,51 @@ export default function RegisterPage() {
     if (isDuplicateEmail) setIsDuplicateEmail(false);
   };
 
+  const handlePhoneKeyDown = (e) => {
+    // Allow control keys: Backspace, Delete, Tab, Arrows, Enter
+    if (['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter'].includes(e.key)) {
+      return;
+    }
+    // Allow Ctrl/Cmd key combos (Copy, Paste, Select All)
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
+    // Allow '+' ONLY as the very first character
+    if (e.key === '+') {
+      const input = e.target;
+      if (input.selectionStart === 0 && !phoneNumber.includes('+')) {
+        return;
+      }
+      e.preventDefault();
+      return;
+    }
+    // Block any key that is not a numeric digit (0-9)
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    const raw = e.target.value;
+    const startsWithPlus = raw.startsWith('+');
+    // Keep only numeric digits
+    const digitsOnly = raw.replace(/\D/g, '');
+    // Limit to max 15 digits (E.164 international standard)
+    const capped = digitsOnly.slice(0, 15);
+    const formatted = startsWithPlus ? `+${capped}` : capped;
+
+    setPhoneNumber(formatted);
+    if (otpError) setOtpError('');
+  };
+
+  const digitsCount = phoneNumber.replace(/\D/g, '').length;
+  const isPhoneLengthValid = digitsCount >= 10 && digitsCount <= 15;
+
   const handleSendOtp = async () => {
     const cleanPhone = phoneNumber.trim();
-    if (!cleanPhone || cleanPhone.length < 8) {
-      setOtpError('Please enter a valid phone number with country code (e.g. +1 555-0199 or +91 9876543210)');
+    const digitsOnly = cleanPhone.replace(/\D/g, '');
+    if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+      setOtpError('Please enter a valid phone number (10 to 15 digits, e.g. +91 9876543210 or +1 5550192834)');
       return;
     }
 
@@ -372,56 +414,91 @@ export default function RegisterPage() {
               </div>
 
               {/* Phone Input Bar */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    disabled={otpVerified || sendingOtp}
-                    value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value);
-                      if (otpError) setOtpError('');
-                    }}
-                    placeholder="+1 (555) 019-2834 or +91 9876543210"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm transition-all font-medium disabled:opacity-75 disabled:cursor-not-allowed"
-                  />
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      maxLength={16}
+                      autoComplete="tel"
+                      disabled={otpVerified || sendingOtp}
+                      value={phoneNumber}
+                      onKeyDown={handlePhoneKeyDown}
+                      onChange={handlePhoneChange}
+                      placeholder="+91 9876543210 or +1 5550192834"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-mono tracking-wide transition-all disabled:opacity-75 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {otpVerified ? (
+                    <button
+                      type="button"
+                      onClick={handleResetPhone}
+                      className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="Change phone number"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Change</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={sendingOtp || !isPhoneLengthValid}
+                      className="px-4 py-2.5 rounded-xl text-xs font-black bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-white shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+                    >
+                      {sendingOtp ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : otpSent ? (
+                        <>
+                          <RotateCw className="w-3.5 h-3.5" />
+                          <span>Resend OTP</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>Send OTP</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
-                {otpVerified ? (
-                  <button
-                    type="button"
-                    onClick={handleResetPhone}
-                    className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all flex items-center gap-1.5"
-                    title="Change phone number"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Change</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={sendingOtp || !phoneNumber.trim()}
-                    className="px-4 py-2.5 rounded-xl text-xs font-black bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-white shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                  >
-                    {sendingOtp ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Sending...</span>
-                      </>
-                    ) : otpSent ? (
-                      <>
-                        <RotateCw className="w-3.5 h-3.5" />
-                        <span>Resend OTP</span>
-                      </>
-                    ) : (
-                      <>
-                        <KeyRound className="w-3.5 h-3.5" />
-                        <span>Send OTP</span>
-                      </>
-                    )}
-                  </button>
+                {/* Real-time Phone Validation & Digit Counter Helper */}
+                {!otpVerified && (
+                  <div className="flex items-center justify-between px-1 text-[11px] font-medium transition-colors">
+                    <div>
+                      {digitsCount === 0 ? (
+                        <span className="text-slate-400 dark:text-slate-500">
+                          Enter 10 to 15 digits (e.g. +91 9876543210 or 9876543210)
+                        </span>
+                      ) : digitsCount < 10 ? (
+                        <span className="text-amber-500 dark:text-amber-400 flex items-center gap-1 font-semibold">
+                          <AlertCircle className="w-3 h-3" />
+                          Enter at least 10 digits ({10 - digitsCount} more required)
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold">
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          Valid phone length
+                        </span>
+                      )}
+                    </div>
+                    <span className={`font-mono text-[10px] font-bold ${
+                      isPhoneLengthValid
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : digitsCount > 0
+                        ? 'text-amber-500 dark:text-amber-400'
+                        : 'text-slate-400 dark:text-slate-500'
+                    }`}>
+                      {digitsCount}/15 digits
+                    </span>
+                  </div>
                 )}
               </div>
 

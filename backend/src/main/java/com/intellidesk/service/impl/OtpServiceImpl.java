@@ -42,6 +42,11 @@ public class OtpServiceImpl implements OtpService {
     @Override
     public SendOtpResponse sendRegistrationOtp(String phoneNumber) {
         String normalized = normalizePhone(phoneNumber);
+        String digitsOnly = normalized.replace("+", "");
+        if (digitsOnly.length() < 7 || digitsOnly.length() > 15) {
+            throw new BadRequestException("Invalid phone number length (" + digitsOnly.length() + " digits). Must contain between 7 and 15 digits (E.164 international standard).");
+        }
+
         String code = String.format("%06d", secureRandom.nextInt(1_000_000));
 
         boolean storedInRedis = false;
@@ -81,6 +86,10 @@ public class OtpServiceImpl implements OtpService {
     @Override
     public VerifyOtpResponse verifyRegistrationOtp(String phoneNumber, String code) {
         String normalized = normalizePhone(phoneNumber);
+        String digitsOnly = normalized.replace("+", "");
+        if (digitsOnly.length() < 7 || digitsOnly.length() > 15) {
+            throw new BadRequestException("Invalid phone number length (" + digitsOnly.length() + " digits). Must contain between 7 and 15 digits.");
+        }
         String expectedCode = null;
 
         if (redisTemplate != null) {

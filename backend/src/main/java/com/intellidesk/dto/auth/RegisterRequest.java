@@ -2,6 +2,7 @@ package com.intellidesk.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
@@ -24,6 +25,7 @@ public class RegisterRequest {
 
     private String department;
 
+    @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Phone number must contain between 7 and 15 digits (e.g. +919876543210 or +15551234567)")
     private String phoneNumber;
 
     private String role; // Optional: ROLE_EMPLOYEE (default), ROLE_SUPPORT_ENGINEER, ROLE_ADMIN
