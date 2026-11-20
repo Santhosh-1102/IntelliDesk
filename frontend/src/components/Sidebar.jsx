@@ -111,10 +111,10 @@ export default function Sidebar() {
               <NavLink to="/admin/chat" className={navClass}>
                 <div className="flex items-center gap-3">
                   <Bot className="w-4 h-4 text-violet-500" />
-                  <span>Diagnostic Assistant</span>
+                  <span>RAG Test Sandbox</span>
                 </div>
                 <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-500/30 rounded-md">
-                  RAG
+                  QA
                 </span>
               </NavLink>
               <NavLink to="/admin/queue" className={navClass}>

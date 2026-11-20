@@ -61,7 +61,8 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function AiChatAssistant() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isAdmin = roles?.includes('ROLE_ADMIN');
   const [messages, setMessages] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [sessionStatus, setSessionStatus] = useState('ACTIVE');
@@ -449,14 +450,16 @@ export default function AiChatAssistant() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-sm font-bold text-slate-900 dark:text-white">
-                    IntelliDesk AI Specialist
+                    {isAdmin ? 'RAG Verification & Diagnostic Sandbox' : 'IntelliDesk AI Specialist'}
                   </h1>
-                  <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded-md">
-                    SOP Diagnostic Engine
+                  <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20 rounded-md">
+                    {isAdmin ? 'Admin Test Mode' : 'SOP Diagnostic Engine'}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  Interactive multi-turn troubleshooting with automated escalation
+                  {isAdmin
+                    ? 'Test knowledge base grounding, vector embeddings, and LLM responses against uploaded corporate SOPs'
+                    : 'Interactive multi-turn troubleshooting with automated escalation'}
                 </p>
               </div>
             </div>
