@@ -91,11 +91,11 @@ export default function AdminDashboard() {
             className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           >
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                   IT Governance & Operational Analytics
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 flex items-center gap-1.5">
+                <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 inline-flex items-center gap-1.5 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
                   Live Executive BI
                 </span>

@@ -465,7 +465,7 @@ export default function KnowledgeBaseManagement() {
                         </td>
 
                         <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
+                          <span className="inline-block whitespace-nowrap px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700">
                             {doc.category || 'General'}
                           </span>
                         </td>

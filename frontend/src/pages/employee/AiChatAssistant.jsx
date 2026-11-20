@@ -183,6 +183,9 @@ export default function AiChatAssistant() {
         };
       });
       setMessages(mapped);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } catch (err) {
       console.error('Error loading session details:', err);
     } finally {
@@ -353,17 +356,17 @@ export default function AiChatAssistant() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070b14] flex flex-col font-sans transition-colors duration-300">
+    <div className="h-screen max-h-screen overflow-hidden bg-[#f8fafc] dark:bg-[#070b14] flex flex-col font-sans transition-colors duration-300">
       <Navbar />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto overflow-hidden">
         {/* Main Desktop Sidebar */}
         <Sidebar />
 
         {/* Sessions Drawer / Sub-Sidebar (Collapsible on Mobile) */}
-        <div className="w-80 bg-white/50 dark:bg-[#0a0f1d]/60 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col hidden lg:flex">
+        <div className="w-80 h-full bg-white/50 dark:bg-[#0a0f1d]/60 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col hidden lg:flex shrink-0 overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-cyan-500" />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
@@ -437,9 +440,9 @@ export default function AiChatAssistant() {
         </div>
 
         {/* Main Interactive Chat Area */}
-        <main className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-slate-50/50 dark:bg-[#070b14]">
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50/50 dark:bg-[#070b14]">
           {/* Top Session Status Bar */}
-          <div className="px-6 py-3.5 bg-white/70 dark:bg-[#090e1c]/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+          <div className="px-6 py-3.5 bg-white/70 dark:bg-[#090e1c]/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/20">

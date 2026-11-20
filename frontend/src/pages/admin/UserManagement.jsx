@@ -261,29 +261,31 @@ export default function UserManagement() {
                           )}
                         </td>
 
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <select
-                            disabled={updatingId === u.id}
-                            value={u.roles?.[0] || 'ROLE_EMPLOYEE'}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                            className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer shadow-sm disabled:opacity-50"
-                          >
-                            <option value="ROLE_EMPLOYEE">Role: Employee</option>
-                            <option value="ROLE_SUPPORT_ENGINEER">Role: Support Engineer</option>
-                            <option value="ROLE_ADMIN">Role: Admin</option>
-                          </select>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2.5 flex-wrap sm:flex-nowrap">
+                            <select
+                              disabled={updatingId === u.id}
+                              value={u.roles?.[0] || 'ROLE_EMPLOYEE'}
+                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer shadow-sm disabled:opacity-50 min-w-[160px]"
+                            >
+                              <option value="ROLE_EMPLOYEE">Role: Employee</option>
+                              <option value="ROLE_SUPPORT_ENGINEER">Role: Support Engineer</option>
+                              <option value="ROLE_ADMIN">Role: Admin</option>
+                            </select>
 
-                          <button
-                            disabled={updatingId === u.id}
-                            onClick={() => handleToggleStatus(u.id)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm disabled:opacity-50 ${
-                              u.active
-                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-500/30'
-                                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-500/30'
-                            }`}
-                          >
-                            {u.active ? 'Disable' : 'Enable'}
-                          </button>
+                            <button
+                              disabled={updatingId === u.id}
+                              onClick={() => handleToggleStatus(u.id)}
+                              className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all shadow-sm disabled:opacity-50 min-w-[70px] ${
+                                u.active
+                                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-500/30'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-500/30'
+                              }`}
+                            >
+                              {u.active ? 'Disable' : 'Enable'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

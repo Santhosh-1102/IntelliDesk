@@ -29,7 +29,7 @@ export default function Sidebar() {
     }`;
 
   return (
-    <aside className="w-64 bg-white/70 dark:bg-[#070b14]/75 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 min-h-[calc(100vh-4rem)] p-4 flex flex-col justify-between hidden md:flex transition-colors duration-300">
+    <aside className="w-64 shrink-0 bg-white/70 dark:bg-[#070b14]/75 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 min-h-[calc(100vh-4rem)] p-4 flex flex-col justify-between hidden md:flex transition-colors duration-300">
       <div className="space-y-6">
         {/* Employee Navigation */}
         {isEmployee && (
