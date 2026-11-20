@@ -9,6 +9,7 @@ public class AiChatResponse {
     private String reply;
     private String identifiedCategory;
     private Double confidenceScore;
+    private String citation;
     private List<DiagnosticStepDto> steps = new ArrayList<>();
     private boolean canEscalate = true;
     private boolean isResolved = false;
@@ -53,6 +54,14 @@ public class AiChatResponse {
 
     public void setConfidenceScore(Double confidenceScore) {
         this.confidenceScore = confidenceScore;
+    }
+
+    public String getCitation() {
+        return citation;
+    }
+
+    public void setCitation(String citation) {
+        this.citation = citation;
     }
 
     public List<DiagnosticStepDto> getSteps() {

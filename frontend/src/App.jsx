@@ -13,6 +13,7 @@ import AiChatAssistant from './pages/employee/AiChatAssistant';
 import EngineerDashboard from './pages/engineer/EngineerDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
+import KnowledgeBaseManagement from './pages/admin/KnowledgeBaseManagement';
 
 export default function App() {
   return (
@@ -73,6 +74,22 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
                   <UserManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/documents"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_SUPPORT_ENGINEER']}>
+                  <KnowledgeBaseManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/knowledge"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_SUPPORT_ENGINEER']}>
+                  <KnowledgeBaseManagement />
                 </ProtectedRoute>
               }
             />

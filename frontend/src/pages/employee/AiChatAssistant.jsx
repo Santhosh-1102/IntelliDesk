@@ -33,7 +33,8 @@ import {
   ChevronDown,
   X,
   ImagePlus,
-  Maximize2
+  Maximize2,
+  BookOpen
 } from 'lucide-react';
 
 const SUGGESTED_PROMPTS = [
@@ -174,6 +175,7 @@ export default function AiChatAssistant() {
           id: m.id || Math.random(),
           sender: m.senderType,
           content: m.content,
+          citation: m.contextCitations,
           imageData: m.imageData,
           timestamp: m.createdAt,
           diagnosticSteps: isLastAssistant ? allSteps : []
@@ -230,6 +232,7 @@ export default function AiChatAssistant() {
         id: Date.now() + 1,
         sender: 'ASSISTANT',
         content: response.reply,
+        citation: response.citation,
         timestamp: new Date().toISOString(),
         diagnosticSteps: response.steps || response.diagnosticSteps || [],
         escalationSuggested: response.escalationSuggested,
@@ -584,6 +587,12 @@ export default function AiChatAssistant() {
                             </div>
                           ) : (
                             <div>
+                              {msg.citation && (
+                                <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20">
+                                  <BookOpen className="w-3.5 h-3.5 text-cyan-500" />
+                                  <span>Verified SOP: {msg.citation}</span>
+                                </div>
+                              )}
                               <MarkdownMessage content={msg.content} />
 
                               {/* Clean Conversational Feedback Bar */}

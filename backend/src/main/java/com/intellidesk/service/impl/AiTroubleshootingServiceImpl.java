@@ -1,12 +1,14 @@
 package com.intellidesk.service.impl;
 
 import com.intellidesk.dto.ai.*;
+import com.intellidesk.dto.knowledge.RelevantChunkDto;
 import com.intellidesk.entity.*;
 import com.intellidesk.entity.enums.*;
 import com.intellidesk.exception.BadRequestException;
 import com.intellidesk.exception.ResourceNotFoundException;
 import com.intellidesk.repository.*;
 import com.intellidesk.service.AiTroubleshootingService;
+import com.intellidesk.service.KnowledgeDocumentService;
 import com.intellidesk.utils.TicketNumberGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
     private final TicketCategoryRepository categoryRepository;
     private final TicketHistoryRepository historyRepository;
     private final ObjectProvider<ChatClient> chatClientProvider;
+    private final KnowledgeDocumentService knowledgeDocumentService;
 
     public AiTroubleshootingServiceImpl(
             AiConversationRepository conversationRepository,
@@ -48,7 +51,8 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             TicketRepository ticketRepository,
             TicketCategoryRepository categoryRepository,
             TicketHistoryRepository historyRepository,
-            ObjectProvider<ChatClient> chatClientProvider
+            ObjectProvider<ChatClient> chatClientProvider,
+            KnowledgeDocumentService knowledgeDocumentService
     ) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -58,6 +62,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         this.categoryRepository = categoryRepository;
         this.historyRepository = historyRepository;
         this.chatClientProvider = chatClientProvider;
+        this.knowledgeDocumentService = knowledgeDocumentService;
     }
 
     @Override
@@ -158,6 +163,7 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 category,
                 plan.getConfidence()
         );
+        response.setCitation(plan.getCitation());
         response.setSteps(stepDtos);
         response.setCanEscalate(conversation.getStatus() != ConversationStatus.ESCALATED);
         response.setResolved(conversation.getStatus() == ConversationStatus.RESOLVED);
@@ -448,12 +454,33 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             List<AiMessage> history,
             List<TroubleshootingStep> existingSteps
     ) {
-        // Use Spring AI ChatClient with connected Google Gemini LLM
+        // 1. RAG Retrieval: Dynamically retrieve verified enterprise SOP knowledge base chunks
+        List<RelevantChunkDto> relevantChunks = Collections.emptyList();
+        try {
+            relevantChunks = knowledgeDocumentService.searchRelevantChunks(userMessage, 3);
+            if (relevantChunks.isEmpty() && conversation.getInitialQuery() != null && !conversation.getInitialQuery().equalsIgnoreCase(userMessage)) {
+                relevantChunks = knowledgeDocumentService.searchRelevantChunks(conversation.getInitialQuery(), 3);
+            }
+        } catch (Exception e) {
+            log.warn("Knowledge Base RAG retrieval encountered an issue: {}", e.getMessage());
+        }
+
+        String citation = null;
+        if (!relevantChunks.isEmpty()) {
+            citation = relevantChunks.stream()
+                    .map(c -> c.getDocumentTitle() + " (Chunk #" + c.getChunkIndex() + ")")
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+        } else {
+            citation = "Google Gemini 3.5 Flash";
+        }
+
+        // 2. Use Spring AI ChatClient with connected Google Gemini LLM
         ChatClient chatClient = chatClientProvider.getIfAvailable();
         if (chatClient != null) {
             try {
                 boolean hasImage = imageBase64 != null && !imageBase64.isBlank();
-                String promptText = buildPrompt(conversation, userMessage, history, hasImage);
+                String promptText = buildPrompt(conversation, userMessage, history, hasImage, relevantChunks);
                 String aiReply;
 
                 if (hasImage) {
@@ -490,9 +517,10 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                 }
 
                 if (aiReply != null && !aiReply.isBlank()) {
-                    log.info("Successfully generated dynamic AI response from Gemini model for session: {}", conversation.getSessionId());
+                    log.info("Successfully generated dynamic AI response from Gemini model for session: {} (RAG cited: {})",
+                            conversation.getSessionId(), citation);
                     List<RawDiagnosticStep> steps = extractStepsFromReply(aiReply, conversation.getIdentifiedCategory());
-                    return new DiagnosticPlan(aiReply, "Google Gemini 3.5 Flash", 0.98, steps);
+                    return new DiagnosticPlan(aiReply, citation, 0.98, steps);
                 }
             } catch (Exception e) {
                 log.warn("Spring AI ChatClient call failed: {}", e.getMessage(), e);
@@ -513,10 +541,10 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                         null
                 )
         );
-        return new DiagnosticPlan(fallbackReply, "IntelliDesk Fallback Service", 0.50, fallbackSteps);
+        return new DiagnosticPlan(fallbackReply, citation != null ? citation : "IntelliDesk Fallback Service", 0.50, fallbackSteps);
     }
 
-    private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history, boolean hasImage) {
+    private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history, boolean hasImage, List<RelevantChunkDto> relevantChunks) {
         StringBuilder sb = new StringBuilder();
         sb.append("You are the IntelliDesk Enterprise IT AI Specialist. Guide enterprise employees step-by-step with practical, user-friendly instructions:\n");
         sb.append("Formatting & Communication Style:\n");
@@ -531,6 +559,20 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
         sb.append("- For physical hardware defects (e.g. green or pink lines on a laptop screen, cracked panel, liquid spill, broken keycap): clearly explain that this is a physical hardware defect that cannot be fixed by software. Give them a quick 30-second BIOS test (tap F2/F12 on reboot) or external monitor test to confirm, and recommend clicking 'Convert to Support Ticket' so the IT hardware team can replace the screen or part.\n");
         sb.append("- If terminal/PowerShell commands are helpful, format them in a ```powershell code block.\n");
         sb.append("- Address the user's latest query directly without repeating past points.\n\n");
+
+        // Inject RAG SOP chunks if available
+        if (relevantChunks != null && !relevantChunks.isEmpty()) {
+            sb.append("## Verified Corporate Standard Operating Procedures (SOPs):\n");
+            sb.append("The following official enterprise SOP chunks were dynamically retrieved from the knowledge base for this issue:\n\n");
+            for (RelevantChunkDto chunk : relevantChunks) {
+                sb.append("--- [Document: ").append(chunk.getDocumentTitle())
+                        .append(" | Category: ").append(chunk.getCategory())
+                        .append(" | Chunk #").append(chunk.getChunkIndex()).append("] ---\n");
+                sb.append(chunk.getChunkContent().trim()).append("\n\n");
+            }
+            sb.append("CRITICAL INSTRUCTION: You MUST prioritize and incorporate the official policies, troubleshooting steps, URLs, and commands specified in the Verified Corporate SOPs above into your solution. Accurately cite the SOP title when referring to corporate guidelines.\n\n");
+        }
+
         sb.append("Initial Problem: ").append(conversation.getInitialQuery()).append("\n");
         sb.append("Domain Category: ").append(conversation.getIdentifiedCategory()).append("\n\n");
         sb.append("Conversation History:\n");
