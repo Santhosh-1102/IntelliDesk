@@ -110,6 +110,14 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/chat"
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_SUPPORT_ENGINEER']}>
+                  <AiChatAssistant />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/users"
               element={
                 <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>

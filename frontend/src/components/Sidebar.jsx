@@ -18,7 +18,7 @@ export default function Sidebar() {
   const { roles } = useAuth();
 
   const isEmployee = roles.includes('ROLE_EMPLOYEE') && !roles.includes('ROLE_SUPPORT_ENGINEER') && !roles.includes('ROLE_ADMIN');
-  const isEngineer = roles.includes('ROLE_SUPPORT_ENGINEER');
+  const isEngineer = roles.includes('ROLE_SUPPORT_ENGINEER') && !roles.includes('ROLE_ADMIN');
   const isAdmin = roles.includes('ROLE_ADMIN');
 
   const navClass = ({ isActive }) =>
@@ -64,7 +64,7 @@ export default function Sidebar() {
         )}
 
         {/* Engineer Navigation */}
-        {(isEngineer || isAdmin) && (
+        {isEngineer && (
           <div>
             <p className="px-3 text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
               IT Support Desk
@@ -106,6 +106,21 @@ export default function Sidebar() {
                 <div className="flex items-center gap-3">
                   <BarChart3 className="w-4 h-4 text-violet-500" />
                   <span>Analytics & SLA</span>
+                </div>
+              </NavLink>
+              <NavLink to="/admin/chat" className={navClass}>
+                <div className="flex items-center gap-3">
+                  <Bot className="w-4 h-4 text-violet-500" />
+                  <span>Diagnostic Assistant</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-500/30 rounded-md">
+                  RAG
+                </span>
+              </NavLink>
+              <NavLink to="/engineer" end className={navClass}>
+                <div className="flex items-center gap-3">
+                  <Inbox className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-violet-500 transition-colors" />
+                  <span>Support Queue</span>
                 </div>
               </NavLink>
               <NavLink to="/admin/documents" className={navClass}>
