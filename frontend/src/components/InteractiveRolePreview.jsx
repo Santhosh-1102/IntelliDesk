@@ -93,7 +93,7 @@ export default function InteractiveRolePreview() {
                 to="/login"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-md shadow-cyan-500/20 transition-all self-start sm:self-auto"
               >
-                Try Employee Workspace <ArrowRight className="w-3.5 h-3.5" />
+                Explore Employee Portal <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
@@ -158,7 +158,7 @@ export default function InteractiveRolePreview() {
                 to="/login"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/20 transition-all self-start sm:self-auto"
               >
-                Try Engineer Cockpit <ArrowRight className="w-3.5 h-3.5" />
+                Explore Support Queue <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
@@ -215,7 +215,7 @@ export default function InteractiveRolePreview() {
                 to="/login"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-500/20 transition-all self-start sm:self-auto"
               >
-                Try Admin Dashboard <ArrowRight className="w-3.5 h-3.5" />
+                Explore Admin Console <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 

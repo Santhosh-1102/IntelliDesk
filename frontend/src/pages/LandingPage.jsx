@@ -159,7 +159,7 @@ export default function LandingPage() {
                 to="/login"
                 className="inline-flex items-center gap-2.5 px-8 py-3.5 text-base font-bold text-white bg-gradient-to-r from-cyan-500 via-brand-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 rounded-2xl shadow-xl shadow-cyan-500/25 transition-all hover:-translate-y-1"
               >
-                Launch Live Demo <ArrowRight className="w-5 h-5" />
+                Sign In to Workspace <ArrowRight className="w-5 h-5" />
               </Link>
               <Link
                 to="/register"
@@ -298,14 +298,14 @@ export default function LandingPage() {
                 Ready to Experience Next-Gen IT Troubleshooting?
               </h3>
               <p className="text-sm text-cyan-100 font-medium">
-                Try the live application right now with pre-seeded demo accounts for Employees, IT Engineers, and Admins.
+                Autonomous incident diagnosis, corporate knowledge base RAG, and SLA governance built for modern engineering teams.
               </p>
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   to="/login"
                   className="px-8 py-3.5 rounded-2xl bg-white text-slate-900 font-black text-sm hover:bg-slate-50 shadow-xl transition-all hover:scale-105"
                 >
-                  Sign In with Demo Role
+                  Sign In to Workspace
                 </Link>
                 <Link
                   to="/register"

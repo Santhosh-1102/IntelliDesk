@@ -524,7 +524,7 @@ export default function RegisterPage() {
                       <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border border-cyan-500/30 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-cyan-500 text-white">
-                            Dev Test Code
+                            Verification Code
                           </span>
                           <span className="font-mono text-sm font-black tracking-widest text-cyan-600 dark:text-cyan-300">
                             {devOtpHint}
