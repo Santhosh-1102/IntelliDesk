@@ -7,7 +7,7 @@ databases:
   # 1. PostgreSQL 16 with Native pgvector Support
   - name: intellidesk-postgres
     databaseName: intellidesk_db
-    user: postgres
+    user: intellidesk
     plan: free
     postgresMajorVersion: "16"
 
@@ -80,4 +80,4 @@ services:
         fromService:
           type: web
           name: intellidesk-backend
-          property: url
+          property: host
