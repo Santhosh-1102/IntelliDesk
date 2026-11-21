@@ -2,9 +2,8 @@
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B -Daether.syncContext.named.factory=noop || true
 COPY src ./src
-RUN mvn clean package -DskipTests -Daether.syncContext.named.factory=noop
+RUN mvn clean package -DskipTests -B -Daether.syncContext.named.factory=noop
 
 # Stage 2: Hardened Runtime Container
 FROM eclipse-temurin:21-jre-alpine
@@ -19,5 +18,6 @@ USER intellidesk
 
 EXPOSE 8080
 
-ENV JAVA_OPTS="-Xms256m -Xmx1024m"
+# Tuned for Render Free Tier (512MB RAM limit)
+ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC"
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
