@@ -9,11 +9,11 @@ databases:
     databaseName: intellidesk_db
     user: postgres
     plan: free
-    postgresMajorVersion: 16
+    postgresMajorVersion: "16"
 
 services:
-  # 2. Redis 7 In-Memory Cache (OTP TTL & Session Cache)
-  - type: redis
+  # 2. Redis Key-Value Store (OTP TTL & Session Cache)
+  - type: keyvalue
     name: intellidesk-redis
     plan: free
     ipAllowList: []
@@ -49,12 +49,12 @@ services:
           property: password
       - key: REDIS_HOST
         fromService:
-          type: redis
+          type: keyvalue
           name: intellidesk-redis
           property: host
       - key: REDIS_PORT
         fromService:
-          type: redis
+          type: keyvalue
           name: intellidesk-redis
           property: port
       - key: GEMINI_API_KEY
@@ -65,7 +65,8 @@ services:
         value: mock
 
   # 4. IntelliDesk React 18 Single Page Application (Global CDN Edge)
-  - type: static
+  - type: web
+    runtime: static
     name: intellidesk-frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
