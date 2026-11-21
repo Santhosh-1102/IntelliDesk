@@ -640,6 +640,39 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
                     "Press Win + Ctrl + Shift + B to trigger an immediate hardware display driver restart.",
                     null
             ));
+        } else if (query.contains("charg") || query.contains("battery") || query.contains("power") || query.contains("plugged")) {
+            reply.append("### 🔋 Troubleshooting Laptop Not Charging\n\n");
+            reply.append("When a laptop is plugged in but not charging, the cause is usually an ACPI battery driver lockup, residual static charge in motherboard capacitors, or a faulty power adapter.\n\n");
+            reply.append("#### Recommended Resolution Steps:\n\n");
+            reply.append("**Step 1: Reinstall Microsoft ACPI Battery Driver (Most Common Fix)**\n");
+            reply.append("- Press `Win + X` and select **Device Manager**.\n");
+            reply.append("- Expand the **Batteries** category.\n");
+            reply.append("- Right-click **Microsoft ACPI-Compliant Control Method Battery** and select **Uninstall device** (do NOT check delete driver software).\n");
+            reply.append("- Click **Action** in the top menu bar $\\rightarrow$ **Scan for hardware changes** (or restart your laptop). Windows will instantly reinstall a fresh driver.\n\n");
+            reply.append("**Step 2: Perform 30-Second Hard Static Power Reset**\n");
+            reply.append("- Disconnect the charger and all USB peripherals.\n");
+            reply.append("- Press and **hold the Power button for 30 seconds continuously** (this drains residual electrical static charge from the motherboard capacitors).\n");
+            reply.append("- Plug the AC charger directly into a wall outlet (avoid unpowered extension cords) and turn on the laptop.\n\n");
+            reply.append("**Step 3: Generate Windows Official Battery Health Report**\n");
+            reply.append("Run this PowerShell command to generate a full health report comparing original design capacity vs full charge capacity:\n\n");
+            reply.append("```powershell\npowercfg /batteryreport /output \"$env:USERPROFILE\\battery-report.html\"; Start-Process \"$env:USERPROFILE\\battery-report.html\"\n```\n\n");
+            reply.append("If the charging indicator LED does not light up at all after trying a different wall outlet, click **'Convert to Human Ticket'** above so IT hardware support can issue a replacement charger or battery.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Reinstall ACPI Battery Driver",
+                    "Open Device Manager > Batteries > right-click Microsoft ACPI-Compliant Control Method Battery > Uninstall > Action > Scan for hardware changes.",
+                    null
+            ));
+            steps.add(new RawDiagnosticStep(
+                    "Perform 30-Second Static Power Drain",
+                    "Unplug charger, hold power button down for 30 seconds to drain static capacitor charge, then reconnect charger.",
+                    null
+            ));
+            steps.add(new RawDiagnosticStep(
+                    "Generate Battery Health Report",
+                    "Run powercfg /batteryreport in PowerShell to inspect battery degradation and cycle count.",
+                    "powercfg /batteryreport /output \"$env:USERPROFILE\\battery-report.html\""
+            ));
         } else {
             reply.append("### 🔍 Intelligent Diagnostic Analysis\n\n");
             reply.append("I have analyzed your inquiry regarding: **\"").append(userMessage).append("\"** in domain **[").append(category != null ? category : "General IT").append("]**.\n\n");
