@@ -3,22 +3,14 @@
 # https://render.com/docs/blueprint-spec
 # =========================================================================
 
-databases:
-  # 1. PostgreSQL 16 with Native pgvector Support
-  - name: intellidesk-postgres
-    databaseName: intellidesk_db
-    user: intellidesk
-    plan: free
-    postgresMajorVersion: "16"
-
 services:
-  # 2. Redis Key-Value Store (OTP TTL & Session Cache)
+  # 1. Redis Key-Value Store (OTP TTL & Session Cache)
   - type: keyvalue
     name: intellidesk-redis
     plan: free
     ipAllowList: []
 
-  # 3. IntelliDesk Spring Boot 3 Java 21 Backend Web Service
+  # 2. IntelliDesk Spring Boot 3 Java 21 Backend Web Service
   - type: web
     name: intellidesk-backend
     runtime: docker
@@ -27,26 +19,12 @@ services:
     plan: free
     healthCheckPath: /actuator/health
     envVars:
-      - key: DB_HOST
-        fromDatabase:
-          name: intellidesk-postgres
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: intellidesk-postgres
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: intellidesk-postgres
-          property: database
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://dpg-dbtkkls9v7es739a8mfg-a:5432/library_db_cb50
       - key: DB_USER
-        fromDatabase:
-          name: intellidesk-postgres
-          property: user
+        value: library_user
       - key: DB_PASSWORD
-        fromDatabase:
-          name: intellidesk-postgres
-          property: password
+        value: M1PO4kzYnoNMMe6mxC2Jda5OlDt6yK0v
       - key: REDIS_HOST
         fromService:
           type: keyvalue
@@ -64,7 +42,7 @@ services:
       - key: SMS_PROVIDER
         value: mock
 
-  # 4. IntelliDesk React 18 Single Page Application (Global CDN Edge)
+  # 3. IntelliDesk React 18 Single Page Application (Global CDN Edge)
   - type: web
     runtime: static
     name: intellidesk-frontend
