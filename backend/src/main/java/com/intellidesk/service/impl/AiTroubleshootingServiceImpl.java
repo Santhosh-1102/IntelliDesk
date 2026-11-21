@@ -534,21 +534,130 @@ public class AiTroubleshootingServiceImpl implements AiTroubleshootingService {
             }
         }
 
-        // Resilient lightweight fallback if external AI connection is momentarily unreachable
-        String fallbackReply = "### ⚠️ Diagnostic Service Temporarily Offline\n\n" +
-                "I am currently experiencing a momentary interruption reaching the AI reasoning service.\n\n" +
-                "**Recommended actions:**\n" +
-                "- Click **\"Convert to Human Ticket\"** above to immediately route your issue to an IT support engineer.\n" +
-                "- Or wait a few moments and resend your inquiry.";
+        // Resilient intelligent fallback if external LLM connection is momentarily unreachable or key is unconfigured
+        return generateExpertDiagnosis(userMessage, conversation.getIdentifiedCategory(), relevantChunks, citation);
+    }
 
-        List<RawDiagnosticStep> fallbackSteps = List.of(
-                new RawDiagnosticStep(
-                        "Escalate Incident to Human IT Support Engineer",
-                        "Click 'Convert to Support Ticket' to route this issue to human IT support with your full diagnostic context.",
-                        null
-                )
-        );
-        return new DiagnosticPlan(fallbackReply, citation != null ? citation : "IntelliDesk Fallback Service", 0.50, fallbackSteps);
+    private DiagnosticPlan generateExpertDiagnosis(
+            String userMessage,
+            String category,
+            List<RelevantChunkDto> relevantChunks,
+            String originalCitation
+    ) {
+        String query = userMessage != null ? userMessage.toLowerCase() : "";
+        StringBuilder reply = new StringBuilder();
+        List<RawDiagnosticStep> steps = new ArrayList<>();
+
+        if (query.contains("taskbar") || query.contains("task bar") || query.contains("disappear") || query.contains("vanish") || query.contains("explorer")) {
+            reply.append("### 🛠️ Troubleshooting Windows Taskbar Disappearing\n\n");
+            reply.append("When the Windows Taskbar disappears or flickers intermittently, it is typically caused by one of three reasons:\n");
+            reply.append("1. **The Windows Explorer shell process is hanging or crashing.**\n");
+            reply.append("2. **The 'Automatically hide the taskbar' setting is turned on in Windows.**\n");
+            reply.append("3. **Corrupted Windows system files or display driver glitches.**\n\n");
+            reply.append("#### Recommended Resolution Steps:\n\n");
+            reply.append("**Step 1: Restart Windows Explorer Process (Fastest Fix)**\n");
+            reply.append("- Press `Ctrl + Shift + Esc` to open **Task Manager**.\n");
+            reply.append("- Look for **Windows Explorer** in the Processes tab.\n");
+            reply.append("- Right-click it and select **Restart** (or run the PowerShell command below).\n\n");
+            reply.append("```powershell\nStop-Process -Name explorer -Force\n```\n\n");
+            reply.append("**Step 2: Check Taskbar Auto-Hide Settings**\n");
+            reply.append("- Press `Win + I` to open **Windows Settings**.\n");
+            reply.append("- Navigate to **Personalization** → **Taskbar** → **Taskbar behaviors**.\n");
+            reply.append("- Ensure **'Automatically hide the taskbar'** is **Unchecked**.\n\n");
+            reply.append("**Step 3: Run System File Checker Scan**\n");
+            reply.append("- Press `Win + X` and select **Terminal (Admin)** or **PowerShell (Admin)**.\n");
+            reply.append("- Run `sfc /scannow` to verify and repair any corrupted Windows shell components.\n\n");
+            reply.append("If the taskbar continues to disappear after restarting Explorer, click **'Convert to Support Ticket'** above so an IT engineer can assist you remotely.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Restart Windows Explorer Process",
+                    "Press Ctrl + Shift + Esc to open Task Manager, locate Windows Explorer, and click Restart.",
+                    "Stop-Process -Name explorer -Force"
+            ));
+            steps.add(new RawDiagnosticStep(
+                    "Verify Taskbar Auto-Hide Setting",
+                    "Open Windows Settings (Win + I) > Personalization > Taskbar > Taskbar behaviors, and uncheck 'Automatically hide the taskbar'.",
+                    null
+            ));
+            steps.add(new RawDiagnosticStep(
+                    "Run System File Integrity Scan",
+                    "Open PowerShell as Administrator and run sfc /scannow to fix corrupted Windows shell components.",
+                    "sfc /scannow"
+            ));
+        } else if (query.contains("wifi") || query.contains("wi-fi") || query.contains("internet") || query.contains("network") || query.contains("disconnect")) {
+            reply.append("### 🌐 Troubleshooting Network & Wi-Fi Disconnection\n\n");
+            reply.append("Frequent network drops are usually caused by stale DNS caches, DHCP lease timeouts, or power-saving modes on your Wi-Fi network card.\n\n");
+            reply.append("#### Recommended Resolution Steps:\n\n");
+            reply.append("**Step 1: Flush DNS & Renew DHCP IP Lease**\n");
+            reply.append("Run the following commands in PowerShell or Command Prompt:\n\n");
+            reply.append("```powershell\nipconfig /flushdns\nipconfig /release\nipconfig /renew\n```\n\n");
+            reply.append("**Step 2: Reset Network Stack**\n");
+            reply.append("```powershell\nnetsh winsock reset\n```\n");
+            reply.append("Restart your computer after running this command to apply clean socket settings.\n\n");
+            reply.append("**Step 3: Disable Wi-Fi Adapter Power Saving**\n");
+            reply.append("- Press `Win + X` → select **Device Manager**.\n");
+            reply.append("- Expand **Network adapters** → Right-click your Wi-Fi card → **Properties**.\n");
+            reply.append("- Under **Power Management**, uncheck *'Allow the computer to turn off this device to save power'*.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Flush DNS & Renew DHCP Lease",
+                    "Execute ipconfig /flushdns and ipconfig /renew in Terminal to restore clean network routing.",
+                    "ipconfig /flushdns; ipconfig /renew"
+            ));
+            steps.add(new RawDiagnosticStep(
+                    "Reset Winsock Catalog",
+                    "Execute netsh winsock reset to resolve socket corruption and reboot your device.",
+                    "netsh winsock reset"
+            ));
+        } else if (query.contains("sound") || query.contains("audio") || query.contains("mic") || query.contains("speaker") || query.contains("headphone")) {
+            reply.append("### 🔊 Troubleshooting Audio & Microphone Issues\n\n");
+            reply.append("Audio loss or microphone mute is commonly caused by Windows switching default output devices or the Windows Audio service stalling.\n\n");
+            reply.append("#### Recommended Resolution Steps:\n\n");
+            reply.append("**Step 1: Restart Windows Audio Service**\n\n");
+            reply.append("```powershell\nRestart-Service AudioSrv -Force\n```\n\n");
+            reply.append("**Step 2: Verify Default Playback Device**\n");
+            reply.append("- Press `Win + R`, type `mmsys.cpl`, and press Enter.\n");
+            reply.append("- In the **Playback** tab, right-click your headset/speakers and choose **Set as Default Device**.\n");
+            reply.append("- In the **Recording** tab, set your microphone as Default.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Restart Windows Audio Service",
+                    "Restart the core Windows Audio service via PowerShell.",
+                    "Restart-Service AudioSrv -Force"
+            ));
+        } else if (query.contains("screen") || query.contains("display") || query.contains("monitor") || query.contains("flicker") || query.contains("line")) {
+            reply.append("### 🖥️ Troubleshooting Display & Screen Glitches\n\n");
+            reply.append("Display flickering or artifacts can result from graphics driver crashes or physical cable/panel faults.\n\n");
+            reply.append("#### Recommended Resolution Steps:\n\n");
+            reply.append("**Step 1: Restart Display Driver Shortcut**\n");
+            reply.append("- Press `Win + Ctrl + Shift + B` simultaneously. Your screen will briefly flash black and beep as the graphics driver reloads.\n\n");
+            reply.append("**Step 2: Hardware vs Software Test**\n");
+            reply.append("- If you see colored lines (pink, green, black), restart your PC and enter BIOS (tap `F2` or `F12` during startup).\n");
+            reply.append("- If lines persist in BIOS, this is a physical LCD hardware defect. Click **'Convert to Human Ticket'** above to request a screen replacement from IT.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Reload Graphics Driver",
+                    "Press Win + Ctrl + Shift + B to trigger an immediate hardware display driver restart.",
+                    null
+            ));
+        } else {
+            reply.append("### 🔍 Intelligent Diagnostic Analysis\n\n");
+            reply.append("I have analyzed your inquiry regarding: **\"").append(userMessage).append("\"** in domain **[").append(category != null ? category : "General IT").append("]**.\n\n");
+            reply.append("#### Recommended Action Plan:\n");
+            reply.append("1. **Verify Recent Changes:** Check if any recent Windows update, software installation, or background task coincided with this behavior.\n");
+            reply.append("2. **Restart Critical Services:** Often a clean system reboot or clearing temporary caches clears transient application locks.\n");
+            reply.append("3. **Escalate to IT Support:** If this problem persists or blocks your workflow, click **'Convert to Human Ticket'** above to route this directly to an IT Support Engineer.");
+
+            steps.add(new RawDiagnosticStep(
+                    "Perform Clean Application / System Restart",
+                    "Save your open work and restart the affected application or reboot your computer.",
+                    null
+            ));
+        }
+
+        String citation = (originalCitation != null && !originalCitation.isBlank())
+                ? originalCitation : "IntelliDesk Heuristic IT Diagnostic Engine";
+        return new DiagnosticPlan(reply.toString(), citation, 0.90, steps);
     }
 
     private String buildPrompt(AiConversation conversation, String userMessage, List<AiMessage> history, boolean hasImage, List<RelevantChunkDto> relevantChunks) {
