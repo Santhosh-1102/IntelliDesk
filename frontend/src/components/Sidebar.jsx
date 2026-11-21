@@ -29,7 +29,7 @@ export default function Sidebar() {
     }`;
 
   return (
-    <aside className="w-64 shrink-0 bg-white/70 dark:bg-[#070b14]/75 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 min-h-[calc(100vh-4rem)] p-4 flex flex-col justify-between hidden md:flex transition-colors duration-300">
+    <aside className="w-64 shrink-0 bg-white/70 dark:bg-[#070b14]/75 backdrop-blur-xl border-r border-slate-200/80 dark:border-slate-800/80 sticky top-16 h-[calc(100vh-4rem)] self-start overflow-y-auto p-4 flex flex-col justify-between hidden md:flex transition-colors duration-300 z-30">
       <div className="space-y-6">
         {/* Employee Navigation */}
         {isEmployee && (
@@ -141,7 +141,7 @@ export default function Sidebar() {
       </div>
 
       {/* System Status Card */}
-      <div className="p-3.5 bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-900/80 dark:to-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm">
+      <div className="p-3.5 mt-6 shrink-0 bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-900/80 dark:to-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">

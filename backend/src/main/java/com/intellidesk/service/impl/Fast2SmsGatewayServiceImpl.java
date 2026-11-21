@@ -20,10 +20,15 @@ import java.util.Map;
 public class Fast2SmsGatewayServiceImpl implements SmsGatewayService {
 
     private static final Logger log = LoggerFactory.getLogger(Fast2SmsGatewayServiceImpl.class);
-    private static final String FAST2SMS_ENDPOINT = "https://www.fast2sms.com/dev/bulkV2";
+
+    // Fast2SMS Smart OTP modern endpoint (TRAI & multi-channel compliant)
+    private static final String FAST2SMS_SMART_OTP_ENDPOINT = "https://www.fast2sms.com/dev/otp/send";
 
     @Value("${intellidesk.sms.fast2sms.api-key:}")
     private String apiKey;
+
+    @Value("${intellidesk.sms.fast2sms.otp-id:}")
+    private String otpId;
 
     @Value("${intellidesk.sms.provider:fast2sms}")
     private String provider;
@@ -42,8 +47,7 @@ public class Fast2SmsGatewayServiceImpl implements SmsGatewayService {
     @Override
     public boolean sendOtpSms(String phoneNumber, String otpCode) {
         if (!isConfigured()) {
-            log.info("ℹ️ Fast2SMS is not configured or disabled (provider={}, apiKeyPresent={}). Running in local test mode.",
-                    provider, (apiKey != null && !apiKey.trim().isBlank()));
+            log.info("ℹ️ Fast2SMS is not configured. Running in local test mode.");
             return false;
         }
 
@@ -60,25 +64,30 @@ public class Fast2SmsGatewayServiceImpl implements SmsGatewayService {
             return false;
         }
 
+        if (otpId == null || otpId.trim().isBlank()) {
+            log.warn("⚠️ Fast2SMS requires an 'otp_id' from Smart OTP > OTP Template List in the Fast2SMS dashboard.");
+            log.info("👉 Please set intellidesk.sms.fast2sms.otp-id in application.properties or FAST2SMS_OTP_ID environment variable.");
+            return false;
+        }
+
         try {
-            // Fast2SMS OTP Route sends an official OTP template:
-            // "Your OTP is <code\>. Do not share it with anyone."
             Map<String, Object> payload = new HashMap<>();
-            payload.put("route", "otp");
-            payload.put("variables_values", otpCode);
-            payload.put("numbers", cleanedDigits);
+            payload.put("mobile", cleanedDigits);
+            payload.put("otp_id", otpId.trim());
+            payload.put("otp", otpCode);
+            payload.put("otp_length", 6);
 
             String requestBody = objectMapper.writeValueAsString(payload);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(FAST2SMS_ENDPOINT))
-                    .header("authorization", apiKey.trim())
+                    .uri(URI.create(FAST2SMS_SMART_OTP_ENDPOINT))
+                    .header("Authorization", apiKey.trim())
                     .header("Content-Type", "application/json")
                     .timeout(Duration.ofSeconds(15))
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
-            log.info("📲 Dispatching live OTP SMS via Fast2SMS to +91-{}...", cleanedDigits);
+            log.info("📲 Dispatching live OTP SMS via Fast2SMS Smart OTP to +91-{}...", cleanedDigits);
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -89,7 +98,7 @@ public class Fast2SmsGatewayServiceImpl implements SmsGatewayService {
                     log.info("✅ [Fast2SMS] Successfully delivered OTP SMS to +91-{}", cleanedDigits);
                     return true;
                 } else {
-                    String errorMsg = root.path("message").asText("Unknown gateway rejection");
+                    String errorMsg = root.path("message").asText("Unknown gateway response");
                     log.error("❌ [Fast2SMS] Gateway rejected dispatch: {}", errorMsg);
                     return false;
                 }
