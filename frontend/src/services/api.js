@@ -2,11 +2,17 @@ import axios from 'axios';
 
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) {
-    const formatted = envUrl.startsWith('http') ? envUrl : `https://${envUrl}`;
-    return `${formatted.replace(/\/$/, '')}/api/v1`;
+
+  // Fallback if Render Blueprint passed the internal docker hostname or if unset in production
+  if (!envUrl || envUrl === 'intellidesk-backend' || !envUrl.includes('.')) {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+      return 'https://intellidesk-backend-sbkn.onrender.com/api/v1';
+    }
+    return '/api/v1';
   }
-  return '/api/v1';
+
+  const formatted = envUrl.startsWith('http') ? envUrl : `https://${envUrl}`;
+  return `${formatted.replace(/\/$/, '')}/api/v1`;
 };
 
 const api = axios.create({
