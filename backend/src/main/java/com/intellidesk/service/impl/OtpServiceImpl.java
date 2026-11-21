@@ -4,6 +4,7 @@ import com.intellidesk.dto.auth.SendOtpResponse;
 import com.intellidesk.dto.auth.VerifyOtpResponse;
 import com.intellidesk.exception.BadRequestException;
 import com.intellidesk.service.OtpService;
+import com.intellidesk.service.SmsGatewayService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ public class OtpServiceImpl implements OtpService {
     private static final long VERIFIED_VALIDITY_SECONDS = 900; // 15 minutes
 
     private final StringRedisTemplate redisTemplate;
+    private final SmsGatewayService smsGatewayService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // In-memory fallback if Redis is ever unreachable
@@ -34,9 +36,12 @@ public class OtpServiceImpl implements OtpService {
 
     private record OtpEntry(String code, long expiryTimeMs) {}
 
-    @Autowired(required = false)
-    public OtpServiceImpl(StringRedisTemplate redisTemplate) {
+    public OtpServiceImpl(
+            @Autowired(required = false) StringRedisTemplate redisTemplate,
+            SmsGatewayService smsGatewayService
+    ) {
         this.redisTemplate = redisTemplate;
+        this.smsGatewayService = smsGatewayService;
     }
 
     @Override
@@ -70,16 +75,30 @@ public class OtpServiceImpl implements OtpService {
             );
         }
 
+        // Attempt live SMS dispatch if provider is configured
+        boolean smsDispatched = false;
+        if (smsGatewayService != null && smsGatewayService.isConfigured()) {
+            smsDispatched = smsGatewayService.sendOtpSms(normalized, code);
+        }
+
         log.info("-------------------------------------------------------");
-        log.info("📲 [IntelliDesk SMS Gateway] Phone: {} -> OTP: {}", normalized, code);
+        log.info("📲 [IntelliDesk SMS Gateway] Phone: {} -> OTP: {} (Dispatched via SMS: {})", normalized, code, smsDispatched);
         log.info("-------------------------------------------------------");
+
+        String message = smsDispatched
+                ? "A 6-digit verification code has been sent via SMS to " + phoneNumber
+                : "A 6-digit verification code has been generated for " + phoneNumber;
+
+        // If SMS was delivered to recipient's phone, do not expose code on screen (devOtp = null).
+        // If running in local mock mode without API key, supply devOtp for smooth testing.
+        String devOtp = smsDispatched ? null : code;
 
         return new SendOtpResponse(
                 true,
-                "A 6-digit verification code has been sent to " + phoneNumber,
+                message,
                 phoneNumber,
                 OTP_VALIDITY_SECONDS,
-                code // Dev test helper
+                devOtp
         );
     }
 

@@ -520,7 +520,7 @@ export default function RegisterPage() {
                     className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 space-y-3"
                   >
                     {/* Dev Test Code Badge (Instantly test without SMS fees) */}
-                    {devOtpHint && (
+                    {devOtpHint ? (
                       <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border border-cyan-500/30 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-cyan-500 text-white">
@@ -538,6 +538,13 @@ export default function RegisterPage() {
                           Auto-fill Code
                         </button>
                       </div>
+                    ) : (
+                      otpSuccessMessage && (
+                        <div className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/60 text-cyan-800 dark:text-cyan-200 text-xs font-semibold flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-cyan-500 shrink-0" />
+                          <span>{otpSuccessMessage}</span>
+                        </div>
+                      )
                     )}
 
                     <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
