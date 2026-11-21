@@ -1,0 +1,8 @@
+target/
+.git/
+.gitignore
+*.iml
+.idea/
+.m2/
+.vscode/
+uploads/

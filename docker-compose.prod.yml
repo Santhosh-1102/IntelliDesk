@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # 1. PostgreSQL 16 with pgvector & HNSW Vector Indexing
+  # =========================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: intellidesk-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-intellidesk_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgvector_prod_data:/var/lib/postgresql/data
+      - ./database/scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-intellidesk_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - intellidesk-net
+
+  # =========================================================================
+  # 2. Redis 7 In-Memory Cache (TTL OTP & Session Store)
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: intellidesk-redis-prod
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - intellidesk-net
+
+  # =========================================================================
+  # 3. IntelliDesk Spring Boot 3 Java 21 Backend API
+  # =========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: intellidesk-backend-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-intellidesk_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      INTELLIDESK_APP_JWT_SECRET: ${JWT_SECRET:-IntelliDeskSuperSecretKeyForProductionJwtTokensWithAtLeast256BitsOfSecurity2026!}
+      INTELLIDESK_APP_JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SMS_PROVIDER: ${SMS_PROVIDER:-mock}
+      FAST2SMS_API_KEY: ${FAST2SMS_API_KEY:-}
+      FAST2SMS_OTP_ID: ${FAST2SMS_OTP_ID:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads/documents
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - intellidesk-net
+
+  # =========================================================================
+  # 4. IntelliDesk React 18 + Nginx Frontend Single Page Application
+  # =========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: intellidesk-frontend-prod
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - intellidesk-net
+
+networks:
+  intellidesk-net:
+    driver: bridge
+
+volumes:
+  pgvector_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  backend_uploads:
+    driver: local
